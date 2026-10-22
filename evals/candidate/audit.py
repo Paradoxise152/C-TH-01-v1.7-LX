@@ -68,6 +68,19 @@ ARMS = [
     },
 ]
 
+# 探索过的邻域：早期试过、但没有采用的路由/阈值变体。
+# 落盘的目的是把“小改善是因为没找够”变成可核对的事实。
+EXPLORED = [
+    ("all-small", "全部小模型（省成本）", arms.FixedModel("small"), run),
+    ("all-standard", "全部标准模型", arms.FixedModel("standard"), run),
+    ("all-strong", "全部强模型（买准确率）", arms.FixedModel("strong"), run),
+    ("threshold-0.6", "执行阈值降到 conf>=0.6、margin>=0（更少澄清）", arms.ThresholdPolicy(0.6, 0.0), run),
+    ("threshold-0.9", "执行阈值抬到 conf>=0.9、margin>=0.8（更保守）", arms.ThresholdPolicy(0.9, 0.8), run),
+    ("explicit-to-strong", "明确→strong（原契约内唯一等价修法）", arms.EXPLICIT_TO_STRONG, run),
+    ("high-risk-execute", "高风险无目标按置信度直接执行（已撤回）", arms.HIGH_RISK_EXECUTE, run),
+]
+
+COST_TARGET_USD = 0.004
 EXPLICIT_LOW = lambda s: bool(s["observation"].get("explicit_target")) and s["observation"]["risk"] == "low"  # noqa: E731
 
 
@@ -123,6 +136,38 @@ def zero_action_detail(scenes, runs):
         for s, r in zip(scenes, runs)
         if not r["commits"]
     ]
+
+
+def explored_row(key, label, scenes, runs):
+    summary = metrics.summarize_verified(scenes, runs, with_groups=False)
+    explicit_low = subgroup(scenes, runs, EXPLICIT_LOW)
+    return {
+        "key": key,
+        "label": label,
+        "legacy_task_success": summary["legacy"]["legacy_task_success"],
+        "verified_task_success": summary["verified_task_success"],
+        "zero_action": summary["outcomes"]["no_commit"],
+        "wrong_target": summary["outcomes"]["wrong_target"],
+        "high_risk_wrong_target": summary["high_risk"]["wrong_target"]["numerator"],
+        "duplicate_non_idempotent": summary["non_idempotent"]["duplicate"]["numerator"],
+        "clarified": summary["clarification"]["attempted"]["numerator"],
+        "clarification_unanswered": summary["clarification"]["unanswered"]["numerator"],
+        "p95_latency_ms": summary["p95_latency_ms"],
+        "p95_explicit_low_ms": explicit_low["p95_latency_ms"],
+        "mean_model_cost_usd": summary["mean_model_cost_usd"],
+    }
+
+
+def dominates_baseline(row, baseline_row):
+    """是否在四个约束下同时优于 baseline：核实成功更高、高风险/重复不增加、
+    平均成本 ≤0.004、明确低风险 P95 不升高。"""
+    return (
+        row["verified_task_success"]["numerator"] > baseline_row["verified_task_success"]["numerator"]
+        and row["high_risk_wrong_target"] <= baseline_row["high_risk_wrong_target"]["numerator"]
+        and row["duplicate_non_idempotent"] <= baseline_row["duplicate_non_idempotent"]["numerator"]
+        and row["mean_model_cost_usd"] <= COST_TARGET_USD
+        and row["p95_explicit_low_ms"] <= baseline_row["explicit_low"]["p95_latency_ms"]
+    )
 
 
 def arm_row(key, label, scenes, runs):
@@ -257,6 +302,29 @@ def main():
         for model in ("small", "standard", "strong")
     }
 
+    explored_rows = [
+        explored_row(key, label, scenes, replay(scenes, policy, runner))
+        for key, label, policy, runner in EXPLORED
+    ]
+    for row in explored_rows:
+        row["dominates_baseline"] = dominates_baseline(row, before_row)
+    explored = {
+        "baseline": {
+            "verified_task_success": before_row["verified_task_success"],
+            "high_risk_wrong_target": before_row["high_risk_wrong_target"]["numerator"],
+            "duplicate_non_idempotent": before_row["duplicate_non_idempotent"]["numerator"],
+            "p95_explicit_low_ms": before_row["explicit_low"]["p95_latency_ms"],
+            "mean_model_cost_usd": before_row["mean_model_cost_usd"],
+        },
+        "criteria": (
+            "优于 baseline 需同时满足：核实成功更高、高风险错误目标与重复非幂等不增加、"
+            "平均成本 <= %s USD、明确低风险 P95 不高于 baseline。" % COST_TARGET_USD
+        ),
+        "variants": explored_rows,
+        "pareto_improvement_found": any(row["dominates_baseline"] for row in explored_rows),
+    }
+    dump(results_dir / "explored.json", explored)
+
     audit = {
         "scenarios": str(Path(args.scenarios).relative_to(ROOT)) if str(args.scenarios).startswith(str(ROOT)) else args.scenarios,
         "sessions": len(scenes),
@@ -291,6 +359,9 @@ def main():
         history["zero_action_sessions"]["numerator"],
         history["clarification_unanswered"]["numerator"],
         history["can_verify_target"],
+    ))
+    print("explored: %d variants, pareto_improvement_found=%s" % (
+        len(explored_rows), explored["pareto_improvement_found"],
     ))
     print("wrote %s" % results_dir)
 

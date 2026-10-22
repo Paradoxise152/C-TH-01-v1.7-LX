@@ -9,8 +9,10 @@
     python evals/candidate/review.py zero-action runs/before/traces.jsonl
     python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl
     python evals/candidate/review.py scene s-fca8479a13a9246b
+    python evals/candidate/review.py explored
 
-`diff` 默认同时写一份中文 Markdown 到 `evals/candidate/results/changed_scenes.md`。
+`diff` 默认同时写一份中文 Markdown 到 `evals/candidate/results/changed_scenes.md`；
+`explored` 读取 `results/explored.json`（7 个试过但未采用的变体与“是否存在 Pareto 改进”）。
 
 （文件名不叫 inspect.py：脚本目录会进入 sys.path，那样会遮蔽标准库 ``inspect``。）
 """
@@ -29,6 +31,7 @@ import metrics  # noqa: E402
 
 DEFAULT_SCENARIOS = ROOT / "data" / "public_scenarios.jsonl"
 DEFAULT_MD = HERE / "results" / "changed_scenes.md"
+DEFAULT_EXPLORED = HERE / "results" / "explored.json"
 
 
 def load_pairs(scenarios_path, traces_path):
@@ -201,6 +204,10 @@ def main():
     p_scene.add_argument("scene_id")
     p_scene.add_argument("--traces", nargs="+", default=[str(ROOT / "runs" / "before" / "traces.jsonl")])
 
+    p_explored = sub.add_parser("explored", help="打印试过但未采用的变体与判定")
+    p_explored.add_argument("--path", default=str(DEFAULT_EXPLORED))
+    p_explored.add_argument("--json", action="store_true")
+
     args = parser.parse_args()
 
     if args.command == "summary":
@@ -235,6 +242,31 @@ def main():
         print("wrote %s" % args.md)
         if args.json:
             print(json.dumps(rows, ensure_ascii=False, indent=1))
+        return 0
+
+    if args.command == "explored":
+        data = json.loads(Path(args.path).read_text(encoding="utf-8"))
+        if args.json:
+            print(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True))
+            return 0
+        base = data["baseline"]
+        print("baseline: verified=%d/%d high_risk_wrong=%d p95_explicit_low=%sms cost=%.5f" % (
+            base["verified_task_success"]["numerator"],
+            base["verified_task_success"]["denominator"],
+            base["high_risk_wrong_target"], base["p95_explicit_low_ms"],
+            base["mean_model_cost_usd"]))
+        print("criteria: " + data["criteria"])
+        print("key | verified | zero | wrong | high_risk_wrong | clarified | p95 | p95_EL | cost | dominates")
+        for variant in data["variants"]:
+            print("%s | %d/%d | %d | %d | %d | %d | %d | %s | %.5f | %s" % (
+                variant["key"],
+                variant["verified_task_success"]["numerator"],
+                variant["verified_task_success"]["denominator"],
+                variant["zero_action"], variant["wrong_target"],
+                variant["high_risk_wrong_target"], variant["clarified"],
+                variant["p95_latency_ms"], variant["p95_explicit_low_ms"],
+                variant["mean_model_cost_usd"], variant["dominates_baseline"]))
+        print("pareto_improvement_found=%s" % data["pareto_improvement_found"])
         return 0
 
     for traces in args.traces:

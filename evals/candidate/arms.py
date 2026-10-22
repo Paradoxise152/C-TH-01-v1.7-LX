@@ -78,6 +78,47 @@ class HighRiskExecute(Baseline):
         return baseline.choose_action(request, prediction)
 
 
+class FixedModel(Baseline):
+    """探索臂：所有请求固定走同一个模型，只改路由、不改决策。"""
+
+    name = "fixed-model"
+    description = "固定模型，其余与 baseline 相同"
+
+    def __init__(self, model):
+        self.model = model
+
+    def select_model(self, request):
+        return self.model
+
+
+class ThresholdPolicy(Baseline):
+    """探索臂：只改 baseline 的“无明确目标时执行/澄清”阈值。
+
+    高风险且无明确目标仍然澄清；明确目标仍然优先执行。用于检查“调阈值”
+    是否真能换来完成率，还是只在不同失败之间搬运。
+    """
+
+    name = "threshold"
+    description = "保持路由与规则，只改置信度/差距阈值"
+
+    def __init__(self, confidence=0.8, margin=0.4):
+        self.confidence = confidence
+        self.margin = margin
+
+    def choose_action(self, request, prediction):
+        if request["risk"] == "high" and not request.get("explicit_target"):
+            return {"kind": "clarify"}
+        explicit = request.get("explicit_target")
+        items = ranked(prediction)
+        if explicit:
+            if any(c["target"] == explicit for c in items):
+                return {"kind": "execute", "target": explicit}
+            return {"kind": "clarify"}
+        if items[0]["confidence"] >= self.confidence and top_margin(prediction) >= self.margin:
+            return {"kind": "execute", "target": items[0]["target"]}
+        return {"kind": "clarify"}
+
+
 class TrustExplicit(Baseline):
     """保留臂：只与 boundary.run_adjusted 配合使用。
 

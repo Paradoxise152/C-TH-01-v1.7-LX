@@ -23,12 +23,24 @@
 三条支撑：
 
 1. 反例臂“从不澄清、总执行 top 候选”在旧口径是 100/100，核实只有 81/100，并新增 9 次高风险错误目标——旧看板不能用于策略取舍。
-2. 信息上限：5 组可观察输入完全相同却对应不同真值（覆盖 30 条），其中一组三个模型的候选逐字相同、真值与是否回答都是 2:2；按“每个可观察组只做一个动作”算，核实成功上限是 94/100，baseline 88。阈值类改动最多值 6 条，且需要事后信息。
+2. 信息上限：5 组可观察输入完全相同却对应不同真值（覆盖 30 条），其中一组三个模型的候选逐字相同、真值与是否回答都是 2:2；按“每个可观察输入只做一个动作”算，任何确定性单动作策略的上限是 94/100（baseline 88），余量 ≤6，且这已是事后信息下的上界。
 3. 明确且低风险组 36 条里有 4 条超时（固定 500ms）：零澄清、完美执行的 P95 下界是 830ms（standard）/680ms（small），600ms 目标不是策略能达成的；剔除超时样本后该组 P95 是 330ms。
 
 保留改动：只在“所选模型候选缺 `explicit_target`”时，以已确认目标执行（`boundary.run_adjusted` + `TrustExplicit`，独立入口）。5 条明确指令不再被多余澄清：核实 88→89，澄清 43→38，该组 P95 930→830，成本不变，高风险错误与重复仍为 0。
 
 回归与反证：`run_adjusted` 在 baseline 策略下与官方 `run` 逐字段相同（放宽是最小的）；同键超时重试仍只 1 次 commit；若 `explicit` 本身错误，保留臂会执行错目标 1 次（人为场景，如实计代价）。
+
+为排除“没找够”，又试了 7 个变体：没有一个能在不增加高风险错误、成本 ≤0.004、明确低风险 P95 不升的前提下提高核实成功（`results/explored.json`）。
+
+| 变体 | 核实成功 | 高风险错误 | 明确低风险 P95 | 平均成本 | 结论 |
+|---|---:|---:|---:|---:|---|
+| 全部 small | 83 | 0 | 1280 | 0.001 | 澄清更多，更差 |
+| 全部 standard | 86 | 0 | 930 | 0.003 | 更差 |
+| 全部 strong | 89 | 0 | 1280 | 0.009 | 完成 +1，成本超 0.004、P95 变差 |
+| 阈值 0.6 / 0.0 | 88 | 0 | 930 | 0.00314 | 澄清 −12，但错目标 2→5 |
+| 阈值 0.9 / 0.8 | 86 | 0 | 930 | 0.00314 | 错目标 0，但零动作 10→14 |
+| 明确→strong | 89 | 0 | 1280 | 0.00614 | 同“全部 strong”，被拒 |
+| 高风险直接执行 | 85 | 3 | 930 | 0.00314 | 撤回 |
 
 ## 证据文件与人工复现
 
@@ -42,20 +54,22 @@
 | 五臂对照 | `evals/candidate/results/arms.md` | 即上表 |
 | 改动落点 | `evals/candidate/results/changed_scenes.md` | before→after 的 5 条逐条细节 |
 | 历史日志审计 | `evals/candidate/results/history_audit.json` | 9 条零动作、39 次澄清、无 world 的核实缺口 |
+| 探索过的邻域 | `evals/candidate/results/explored.json` | 7 个未采用变体的核实成功/高风险错误/成本/P95，`pareto_improvement_found=false` |
 | 自建场景与 oracle | `evals/candidate/scenarios/new_instances.jsonl`、`scenarios/README.md` | 12 条，逐条写明 world 依据 |
-| AI 记录 | `ai-sessions/cth01-session-01.jsonl`、`ai-sessions/INDEX.md` | 902 事件（含工具调用）与关键消息位置 |
+| AI 记录 | `ai-sessions/cth01-session-01.jsonl`、`ai-sessions/INDEX.md` | 完整事件流（含工具调用）与关键消息位置 |
 
 人工复现（约 5 分钟，只读 `runs/`；命令见 `evals/candidate/README.md`）：
 
-1. 跑全流程：`evals\candidate\run.cmd`，应得到 `Ran 6 tests OK`、`Ran 52 tests OK` 与五臂表。
+1. 跑全流程：`evals\candidate\run.cmd`，应得到 `Ran 6 tests OK`、`Ran 59 tests OK` 与五臂表。
 2. 对表：确认 `results/arms.md` 五行与上表一致；`before` 行必须与 `runs/before/summary.json` 完全一致。
 3. 看改动：`review.py diff runs/before/traces.jsonl runs/after/traces.jsonl` 应输出 `changed scenes: 5`，其中 `s-fca8479a13a9246b` 从 `no_commit,1450ms` 变为 `ok,830ms`。
 4. 抽查单条：`review.py scene s-fca8479a13a9246b` 查看输入与完整事件流。
 5. 看反证：`review.py summary runs/legacy-counterexample/traces.jsonl` 应显示旧口径 100/100、核实 81/100、高风险错误 9。
+6. 看“试过什么”：`results/explored.json` 的 `pareto_improvement_found` 应为 `false`。
 
 ## 最终取舍与限制
 
-保留：明确目标优先于候选列表。拒绝：明确→strong（多 1 条完成，但成本 0.00614 超过 0.004、该组 P95 升到 1280）。撤回：放开高风险直接执行（核实降到 85，并新增 3 次高风险错误目标）。继续观察：10 次零动作在当前可观察输入下不可区分，保留澄清。
+**原契约内本轮没有可保留的策略改动（增量 0）**：唯一的等价修法“明确→strong”因成本 0.00614 超过 0.004、该组 P95 升到 1280 被拒绝；放开高风险直接执行因核实降到 85 且新增 3 次高风险错误目标被撤回。保留的修复只在最小边界放宽下成立：明确目标优先于候选列表。继续观察：10 次零动作在当前可观察输入下不可区分，保留澄清。
 
 边界放宽的收益不当作原条件下的产品改善，原约束结果在同一张表保留。未完成：用更好的追问替代澄清、更多自建场景、明确指令下更强的候选约束。已知限制：explicit 的权威性没有现实证据；该组 P95 830 仍高于 600。
 

@@ -1,0 +1,185 @@
+{
+  "baseline": {
+    "duplicate_non_idempotent": 0,
+    "high_risk_wrong_target": 0,
+    "mean_model_cost_usd": 0.00314,
+    "p95_explicit_low_ms": 930,
+    "verified_task_success": {
+      "denominator": 100,
+      "numerator": 88,
+      "rate": 0.88
+    }
+  },
+  "criteria": "优于 baseline 需同时满足：核实成功更高、高风险错误目标与重复非幂等不增加、平均成本 <= 0.004 USD、明确低风险 P95 不高于 baseline。",
+  "pareto_improvement_found": false,
+  "variants": [
+    {
+      "clarification_unanswered": 14,
+      "clarified": 57,
+      "dominates_baseline": false,
+      "duplicate_non_idempotent": 0,
+      "high_risk_wrong_target": 0,
+      "key": "all-small",
+      "label": "全部小模型（省成本）",
+      "legacy_task_success": {
+        "denominator": 100,
+        "numerator": 86,
+        "rate": 0.86
+      },
+      "mean_model_cost_usd": 0.001,
+      "p95_explicit_low_ms": 1280,
+      "p95_latency_ms": 1380,
+      "verified_task_success": {
+        "denominator": 100,
+        "numerator": 83,
+        "rate": 0.83
+      },
+      "wrong_target": 3,
+      "zero_action": 14
+    },
+    {
+      "clarification_unanswered": 12,
+      "clarified": 48,
+      "dominates_baseline": false,
+      "duplicate_non_idempotent": 0,
+      "high_risk_wrong_target": 0,
+      "key": "all-standard",
+      "label": "全部标准模型",
+      "legacy_task_success": {
+        "denominator": 100,
+        "numerator": 88,
+        "rate": 0.88
+      },
+      "mean_model_cost_usd": 0.003,
+      "p95_explicit_low_ms": 930,
+      "p95_latency_ms": 1530,
+      "verified_task_success": {
+        "denominator": 100,
+        "numerator": 86,
+        "rate": 0.86
+      },
+      "wrong_target": 2,
+      "zero_action": 12
+    },
+    {
+      "clarification_unanswered": 9,
+      "clarified": 38,
+      "dominates_baseline": false,
+      "duplicate_non_idempotent": 0,
+      "high_risk_wrong_target": 0,
+      "key": "all-strong",
+      "label": "全部强模型（买准确率）",
+      "legacy_task_success": {
+        "denominator": 100,
+        "numerator": 91,
+        "rate": 0.91
+      },
+      "mean_model_cost_usd": 0.009,
+      "p95_explicit_low_ms": 1280,
+      "p95_latency_ms": 1980,
+      "verified_task_success": {
+        "denominator": 100,
+        "numerator": 89,
+        "rate": 0.89
+      },
+      "wrong_target": 2,
+      "zero_action": 9
+    },
+    {
+      "clarification_unanswered": 7,
+      "clarified": 31,
+      "dominates_baseline": false,
+      "duplicate_non_idempotent": 0,
+      "high_risk_wrong_target": 0,
+      "key": "threshold-0.6",
+      "label": "执行阈值降到 conf>=0.6、margin>=0（更少澄清）",
+      "legacy_task_success": {
+        "denominator": 100,
+        "numerator": 93,
+        "rate": 0.93
+      },
+      "mean_model_cost_usd": 0.00314,
+      "p95_explicit_low_ms": 930,
+      "p95_latency_ms": 1380,
+      "verified_task_success": {
+        "denominator": 100,
+        "numerator": 88,
+        "rate": 0.88
+      },
+      "wrong_target": 5,
+      "zero_action": 7
+    },
+    {
+      "clarification_unanswered": 14,
+      "clarified": 55,
+      "dominates_baseline": false,
+      "duplicate_non_idempotent": 0,
+      "high_risk_wrong_target": 0,
+      "key": "threshold-0.9",
+      "label": "执行阈值抬到 conf>=0.9、margin>=0.8（更保守）",
+      "legacy_task_success": {
+        "denominator": 100,
+        "numerator": 86,
+        "rate": 0.86
+      },
+      "mean_model_cost_usd": 0.00314,
+      "p95_explicit_low_ms": 930,
+      "p95_latency_ms": 1880,
+      "verified_task_success": {
+        "denominator": 100,
+        "numerator": 86,
+        "rate": 0.86
+      },
+      "wrong_target": 0,
+      "zero_action": 14
+    },
+    {
+      "clarification_unanswered": 9,
+      "clarified": 38,
+      "dominates_baseline": false,
+      "duplicate_non_idempotent": 0,
+      "high_risk_wrong_target": 0,
+      "key": "explicit-to-strong",
+      "label": "明确→strong（原契约内唯一等价修法）",
+      "legacy_task_success": {
+        "denominator": 100,
+        "numerator": 91,
+        "rate": 0.91
+      },
+      "mean_model_cost_usd": 0.00614,
+      "p95_explicit_low_ms": 1280,
+      "p95_latency_ms": 1380,
+      "verified_task_success": {
+        "denominator": 100,
+        "numerator": 89,
+        "rate": 0.89
+      },
+      "wrong_target": 2,
+      "zero_action": 9
+    },
+    {
+      "clarification_unanswered": 10,
+      "clarified": 37,
+      "dominates_baseline": false,
+      "duplicate_non_idempotent": 0,
+      "high_risk_wrong_target": 3,
+      "key": "high-risk-execute",
+      "label": "高风险无目标按置信度直接执行（已撤回）",
+      "legacy_task_success": {
+        "denominator": 100,
+        "numerator": 90,
+        "rate": 0.9
+      },
+      "mean_model_cost_usd": 0.00314,
+      "p95_explicit_low_ms": 930,
+      "p95_latency_ms": 1380,
+      "verified_task_success": {
+        "denominator": 100,
+        "numerator": 85,
+        "rate": 0.85
+      },
+      "wrong_target": 5,
+      "zero_action": 10
+    }
+  ]
+}

@@ -23,6 +23,7 @@
 | `test_no_high_risk_regression.py` | 保留臂无高风险错误/重复非幂等；放宽的最小性；两个"不采用"的数字依据 |
 | `test_boundary_and_cost.py` | 固定成本、时延目标可行性、数据的信息上限 |
 | `test_review.py` | 复核工具的差异判定（只看核实结果/提交/时延）与零动作过滤 |
+| `test_explored.py` | 7 个探索变体的数字固定，并断言没有一个在 4 条约束下优于 baseline |
 
 ## 口径
 
@@ -56,8 +57,9 @@ uv run --quiet --offline --no-project python evals/candidate/audit.py
 - `runs/legacy-counterexample/`：旧看板满分的反例
 - `evals/candidate/results/audit.json`、`arms.md`、`history_audit.json`
 - `evals/candidate/results/changed_scenes.md`：before→after 的逐条变化（由下面的 `diff` 生成）
+- `evals/candidate/results/explored.json`：7 个试过但未采用的变体，判定为没有 Pareto 改进
 
-## 人工复核（四条命令，全部只读 runs/）
+## 人工复核（五条命令，全部只读）
 
 ```sh
 # 1) 两个口径各说一遍：旧看板 vs 核实（预期 before: legacy 90/100、verified 88/100）
@@ -69,6 +71,8 @@ uv run --quiet --offline --no-project python evals/candidate/review.py zero-acti
 uv run --quiet --offline --no-project python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl
 # 4) 看单条场景的完整事件流（含模型选择、澄清、提交、时延）
 uv run --quiet --offline --no-project python evals/candidate/review.py scene s-fca8479a13a9246b
+# 5) 看"试过什么"（预期 7 个变体，pareto_improvement_found=False）
+uv run --quiet --offline --no-project python evals/candidate/review.py explored
 ```
 
 预期输出（可直接核对）：
@@ -79,6 +83,7 @@ uv run --quiet --offline --no-project python evals/candidate/review.py scene s-f
 | `summary after` | `verified=89/100 zero_action=9 wrong_target=2 high_risk_wrong=0 clarified=38 unanswered=9 p95=1380` |
 | `zero-action before` | `zero-action: 10` |
 | `diff` | `changed scenes: 5`，其中 `s-fca8479a13a9246b ... no_commit,clarify,1450ms -> ok,execute,830ms` |
+| `explored` | `pareto_improvement_found=False`，7 行变体
 
 `review.py` 不改写 `runs/`；`diff` 会重写 `results/changed_scenes.md`（内容确定）。
 

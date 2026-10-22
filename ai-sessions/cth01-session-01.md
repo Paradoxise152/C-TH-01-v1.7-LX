@@ -11039,3 +11039,2617 @@ The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C
 ```json
 {"command": "$env:PYTHONUTF8='1'; $env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\nuv run --quiet --offline --no-project python ai-sessions/export_session.py > $null 2>&1; Write-Output \"EXPORT_EXIT=$LASTEXITCODE\"\ngit add -A\ngit add --renormalize .\ngit add -f runs/before runs/after runs/after-contract-strong runs/withdraw-highrisk-execute runs/legacy-counterexample 2>$null\n$chk = git diff --cached --check 2>&1\nWrite-Output \"check lines: $($chk.Count)\"\n$chk | Select-Object -First 3\nWrite-Output '=== status ==='\ngit status --porcelain=v1 | Group-Object { $_.Substring(0,2) } | ForEach-Object { \"$($_.Name.Trim()): $($_.Count)\" }", "description": "Regenerate session md without trailing spaces and verify", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
 ```
+
+### tool result (seq 1126)
+
+```
+EXPORT_EXIT=0
+check lines: 0
+=== status ===
+A: 37
+M: 4
+[stderr]
+warning: in the working copy of 'ai-sessions/cth01-session-01.jsonl', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ai-sessions/cth01-session-01.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ai-sessions/export_session.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'evals/candidate/results/arms.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'evals/candidate/results/audit.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'evals/candidate/results/changed_scenes.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'evals/candidate/results/history_audit.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/after-contract-strong/summary.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/after-contract-strong/traces.jsonl', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/after-contract-strong/verified_summary.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/after/summary.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/after/traces.jsonl', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/after/verified_summary.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/before/verified_summary.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/legacy-counterexample/summary.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/legacy-counterexample/traces.jsonl', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/legacy-counterexample/verified_summary.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/withdraw-highrisk-execute/summary.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/withdraw-highrisk-execute/traces.jsonl', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runs/withdraw-highrisk-execute/verified_summary.json', LF will be replaced by CRLF the next time Git touches it
+
+```
+
+## assistant (seq 1130)
+
+[reasoning]
+`git diff --cached --check` = 0 lines now. Status: 37 A + 4 M, no untracked.
+
+Remaining: the "LF will be replaced by CRLF next time Git touches it" warnings (because `core.eol` native on Windows + text attributes). These are benign, but a "standard" setup would set `core.eol=lf` (repo-local) to silence and keep worktree LF. Since our worktree is LF for new files, setting core.eol=lf makes checkout LF, consistent. Let me check whether setting it would cause the CRLF files (runs/before from cli.py) to appear modified: comparison normalizes, so no.
+
+But should I change config on the user's repo? It's a repo-local config (`git config core.eol lf`), not committed. It changes future checkouts' line endings. On Windows, some might prefer CRLF. Since .gitattributes declares `text` (repo LF), core.eol=lf is coherent. I'll do it to silence warnings and keep working tree ≡ blobs, and mention it. Hmm — the user may later use VSCode/git GUI; LF is fine.
+
+Actually, wait: if I set core.eol=lf and then `git checkout -- .` or reset, files write LF. Not an issue.
+
+Is there any downside for the AI session md (viewed in notepad)? Notepad handles LF (Windows 10+ yes).
+
+I'll set it. Then run `git add` again to see warnings gone? The warnings arise when adding LF files whose checkout would be CRLF; with core.eol=lf, no warning expected.
+
+Then verify:
+- git status clean
+- check 0
+- `git status --porcelain` unchanged
+- Also verify test suite still passes (already from rerun).
+- Confirm numbers unchanged after renormalization (files content unchanged except EOL).
+
+Also I should double-check that normalization didn't corrupt the session JSONL (JSON parse still works) — parse the file and count lines. And `runs/*/traces.jsonl` parse. Let me validate JSON integrity of all committed JSON/JSONL files after renormalize (read worktree; normalization happened in index, worktree files are LF already for those written with newline="\n"; runs/before is CRLF — parse fine).
+
+Then final answer:
+- Verdict: repo now meets standard (gitattributes, .gitignore, clean index, deterministic rerun).
+- List of what I fixed in this pass (EOL normalization, gitattributes, trailing whitespace, binary misdetection).
+- What remains non-standard/notable: (a) runs/ is gitignored but force-added (deliberate, for submission); (b) session file 4.4MB; (c) git identity unset (must set); (d) no remote yet; (e) `take-home-base` tag is local.
+- Steps for them:
+  1. `git config user.name/user.email` (repo-local or global).
+  2. Optional: `git config core.eol lf` (already set? I'll set).
+  3. Commit: `git commit -m "…"` or `git commit -F -` with message (provide).
+  4. Verify: `git log --stat -1`, `git status`, `git show --stat`.
+  5. Create empty remote repo (no README/license/gitignore), then:
+     `git remote add origin <url>`
+     `git push -u origin main`
+     `git push origin take-home-base` (optional tag) — actually `git push origin --tags` includes it.
+  6. Confirm on remote the commit hash for submission; put it in REPORT? The task asks to note the submission commit (交卷 commit). Maybe add it to REPORT after commit + amend? Hmm: the report should note the commit; can't know hash before commit. Options: after committing, add a line to REPORT with the hash and amend the commit (hash changes!) — infinite recursion. Standard approach in such tasks: report the commit hash in the submission form, not in the file. Or add "交卷 commit 见提交说明". I'll advise: don't put the hash inside the repo; provide it in the submission form/message. If they insist, add it after commit in a second commit? That second commit hash becomes the actual one... Practically, just report the final commit hash externally.
+
+- Also note: if they run commands from VSCode terminal, `PYTHONUTF8=1` handled by run.cmd.
+- Reminder: don't `git clean -xdf` (would delete ignored runs? no, runs tracked... `git clean` won't delete tracked; but __pycache__).
+- After commit, if they want the AI session to include the commit, re-run export + second commit (for exactness).
+- Also mention pushing the tag: `git push --tags` optional; the baseline tag documents provenance.
+
+Let me set core.eol and run final verification (tests + status + JSON integrity + git log state), then compose the answer.
+
+Also double check `.gitattributes` is staged and listed.
+
+One more standard check: `git diff --cached --stat` totals, and confirm no unwanted files (e.g., .gitattributes shows A). Let me get final status listing.
+[tool call] pwsh {"command": "$env:PYTHONUTF8='1'; $env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\ngit config core.eol lf\nWrite-Output \"core.eol = $(git config --get core.eol)\"\ngit add -A 2>&1 | Select-Object -First 3\ngit add --renormalize .  2>&1 | Select-Object -First 3\nWrite-Output '=== status ==='\ngit status --porcelain=v1 | Group-Object { $_.Substring(0,2) } | ForEach-Object { \"$($_.Name.Trim()): $($_.Count)\" }\nWrite-Output '=== staged tree ==='\ngit diff --cached --name-status | ForEach-Object { $_ } | Select-Object -First 45\nWrite-Output '=== totals ==='\ngit diff --cached --shortstat\nWrite-Output '=== json integrity ==='\n$code = @'\nimport json, glob\nbad = []\nfiles = [\"data/public_scenarios.jsonl\",\"data/history_sessions.jsonl\",\"ai-sessions/cth01-session-01.jsonl\"] + sorted(glob.glob(\"runs/*/traces.jsonl\"))\nfor f in files:\n    n = 0\n    for line in open(f, encoding=\"utf-8\"):\n        if line.strip():\n            json.loads(line); n += 1\n    print(f, n, \"lines ok\")\nfor f in sorted(glob.glob(\"runs/*/summary.json\")) + sorted(glob.glob(\"runs/*/verified_summary.json\")) + [\"evals/candidate/results/audit.json\",\"evals/candidate/results/history_audit.json\"]:\n    json.load(open(f, encoding=\"utf-8\"))\nprint(\"all json files parse ok\")\n'@\n$code | uv run --quiet --offline --no-project python -", "description": "Set repo eol, re-stage, and validate integrity", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+
+### tool call pwsh (seq 1131)
+
+```json
+{"command": "$env:PYTHONUTF8='1'; $env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\ngit config core.eol lf\nWrite-Output \"core.eol = $(git config --get core.eol)\"\ngit add -A 2>&1 | Select-Object -First 3\ngit add --renormalize .  2>&1 | Select-Object -First 3\nWrite-Output '=== status ==='\ngit status --porcelain=v1 | Group-Object { $_.Substring(0,2) } | ForEach-Object { \"$($_.Name.Trim()): $($_.Count)\" }\nWrite-Output '=== staged tree ==='\ngit diff --cached --name-status | ForEach-Object { $_ } | Select-Object -First 45\nWrite-Output '=== totals ==='\ngit diff --cached --shortstat\nWrite-Output '=== json integrity ==='\n$code = @'\nimport json, glob\nbad = []\nfiles = [\"data/public_scenarios.jsonl\",\"data/history_sessions.jsonl\",\"ai-sessions/cth01-session-01.jsonl\"] + sorted(glob.glob(\"runs/*/traces.jsonl\"))\nfor f in files:\n    n = 0\n    for line in open(f, encoding=\"utf-8\"):\n        if line.strip():\n            json.loads(line); n += 1\n    print(f, n, \"lines ok\")\nfor f in sorted(glob.glob(\"runs/*/summary.json\")) + sorted(glob.glob(\"runs/*/verified_summary.json\")) + [\"evals/candidate/results/audit.json\",\"evals/candidate/results/history_audit.json\"]:\n    json.load(open(f, encoding=\"utf-8\"))\nprint(\"all json files parse ok\")\n'@\n$code | uv run --quiet --offline --no-project python -", "description": "Set repo eol, re-stage, and validate integrity", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+```
+
+### tool result (seq 1132)
+
+```
+core.eol = lf
+=== status ===
+A: 37
+M: 4
+=== staged tree ===
+A	.gitattributes
+M	EVAL_PLAN.md
+M	REPORT.md
+M	ai-sessions/INDEX.md
+A	ai-sessions/cth01-session-01.jsonl
+A	ai-sessions/cth01-session-01.md
+A	ai-sessions/export_session.py
+M	evals/candidate/README.md
+A	evals/candidate/arms.py
+A	evals/candidate/audit.py
+A	evals/candidate/boundary.py
+A	evals/candidate/metrics.py
+A	evals/candidate/results/arms.md
+A	evals/candidate/results/audit.json
+A	evals/candidate/results/changed_scenes.md
+A	evals/candidate/results/history_audit.json
+A	evals/candidate/review.py
+A	evals/candidate/run.cmd
+A	evals/candidate/run.ps1
+A	evals/candidate/scenarios/README.md
+A	evals/candidate/scenarios/new_instances.jsonl
+A	evals/candidate/test_boundary_and_cost.py
+A	evals/candidate/test_candidate_metrics.py
+A	evals/candidate/test_explicit_target.py
+A	evals/candidate/test_no_high_risk_regression.py
+A	evals/candidate/test_review.py
+A	runs/after-contract-strong/summary.json
+A	runs/after-contract-strong/traces.jsonl
+A	runs/after-contract-strong/verified_summary.json
+A	runs/after/summary.json
+A	runs/after/traces.jsonl
+A	runs/after/verified_summary.json
+A	runs/before/summary.json
+A	runs/before/traces.jsonl
+A	runs/before/verified_summary.json
+A	runs/legacy-counterexample/summary.json
+A	runs/legacy-counterexample/traces.jsonl
+A	runs/legacy-counterexample/verified_summary.json
+A	runs/withdraw-highrisk-execute/summary.json
+A	runs/withdraw-highrisk-execute/traces.jsonl
+A	runs/withdraw-highrisk-execute/verified_summary.json
+=== totals ===
+ 41 files changed, 18010 insertions(+), 20 deletions(-)
+=== json integrity ===
+data/public_scenarios.jsonl 100 lines ok
+data/history_sessions.jsonl 100 lines ok
+ai-sessions/cth01-session-01.jsonl 1127 lines ok
+runs\after-contract-strong\traces.jsonl 100 lines ok
+runs\after\traces.jsonl 100 lines ok
+runs\before\traces.jsonl 100 lines ok
+runs\legacy-counterexample\traces.jsonl 100 lines ok
+runs\withdraw-highrisk-execute\traces.jsonl 100 lines ok
+all json files parse ok
+
+```
+
+## assistant (seq 1136)
+
+[reasoning]
+Everything validates:
+- 41 files staged (40 + .gitattributes), 18,010 insertions / 20 deletions.
+- All JSON/JSONL parse.
+- `git diff --cached --check` 0 lines.
+- Axis: `core.eol=lf` set repo-local.
+- Rerun stability verified earlier (A37/M4 unchanged after run.cmd).
+
+One more verification: run the full check once more after all changes (already did in rerun; but after core.eol change no content change). Let me do a final `task.py check` + confirm run.cmd exit 0? The earlier rerun exit 0. Fine; do one last quick check for confidence and to quote test counts.
+
+Also verify `git status` shows no untracked, and note `!!` ignored pycache.
+
+Also: check `.gitattributes` content staged correctly (i/lf).
+
+Then compose the final answer with:
+
+**A. 现状判定**
+- 合规点：单仓库、`main` 分支、基线 tag、.gitignore、.gitattributes、无密钥、无大二进制、JSON 可解析、`git diff --cached --check` 干净、重放命令后工作区仍干净。
+- 已经做过的规范修正（这次）：EOL 统一（.gitattributes + renormalize）、session md 不再是 binary、行尾空白清理、core.eol=lf。
+- 非典型但有意为之：runs/ 在 .gitignore 中但被 -f 加入（提交物要求）；session 4.4MB；没有 LICENSE/CI（不需要）。
+- 唯一硬阻塞：git 作者身份未配置（commit 会失败）。
+- 没有 remote。
+
+**B. 你需要执行的步骤**（逐条命令，含 PowerShell 可直接粘贴）
+1. `cd` 到项目目录（给绝对路径）。
+2. 配置身份（repo-local）：
+```
+git config user.name "你的名字"
+git config user.email "你的邮箱"
+```
+3. 提交（提供完整 message 文件方式）：
+```
+git commit -m "C-TH-01: verified success metric, audit, and explicit-target boundary fix" -m "..."
+```
+Better: give a here-string command that works in PowerShell:
+```
+@'
+...body...
+'@ | git commit -F -
+```
+Note: PowerShell here-string must start on its own line after @'. I'll give a compact single `-m` + `-m` form to avoid heredoc pitfalls:
+`git commit -m "C-TH-01: verified success metric, audit, and explicit-target boundary fix" -m "legacy 90/100 vs verified 88/100; after 89/100 ..."`.
+
+Hmm, the full message is long. I could write the message to a temp file? Simpler: provide the `git commit -F -` heredoc (works in PowerShell as tested earlier with $msg). Provide:
+```powershell
+$msg = @'
+subject
+...
+'@
+$msg | git commit -F -
+```
+That's reliable (we used it).
+
+4. Verify:
+```
+git log --oneline --decorate -2
+git show --stat --oneline HEAD | Select-Object -First 5
+git status
+```
+Expect 2 commits, tag still on baseline.
+
+5. Create empty remote repo (GitHub/GitLab: no README/.gitignore/license).
+6. Add remote and push:
+```
+git remote add origin <url>
+git push -u origin main
+git push origin take-home-base   # optional, keeps provenance
+```
+7. 交卷 commit = output of `git rev-parse HEAD`（写进提交表单/邮件，不要写进仓库再 amend）.
+8. Optional: if they want the session to include the commit: re-run `python ai-sessions/export_session.py`, `git add ai-sessions`, `git commit -m "chore: refresh AI session export"`, push. Note: then the session includes the first commit; the second commit itself won't be in the snapshot (acceptable). Or amend — but amend changes hash and the session's recorded hash would be stale; better second commit? Hmm: if they amend after re-export, the session contains commit #1 hash (now stale) — bad. Second commit keeps #1 valid. I'll recommend the second commit if they bother, else leave.
+
+**C. 提交前最后一遍自检命令**（1 条）:
+`evals\candidate\run.cmd` → expect 6 + 52 tests OK, changed scenes 5.
+And `git status --porcelain` empty.
+
+**D. 注意事项**
+- 不要在提交后用 `git add -A`? Fine.
+- `runs/` 是 ignore 但已 tracked；如果以后新增 runs 子目录需要再 `git add -f`。
+- 推送前确认没有把 `~/.dsh` 之类包含进来（仓库根就是 C-TH-01-v1.7）。
+- 远端若带 README 初始提交，需要 `git pull --rebase origin main` 或 `git push -f`（不推荐）；直接建空仓库最省事。
+- Tag: `take-home-base` 指向 baseline，保留能说明起点；推送 tags 可选。
+- If they want to squash into one commit, `git reset --soft take-home-base` then commit — but 2 commits (baseline + submission) is actually good provenance. Recommend keeping baseline commit and adding the submission commit.
+
+Also mention: after commit, `git status` should be clean; `git log` shows 2 commits.
+
+Also note `git diff --cached --check` clean and `git status` clean — I should state these facts as the verification I ran.
+
+Finally: since they chose earlier "先不提交", I leave the staged state. Note that if they run `run.cmd` again after committing, tree stays clean (verified).
+
+Let me do a final quick check run to quote numbers, then write the answer. Also get `git rev-parse` baseline hash and confirm no remote.
+
+I think we've verified enough: check exit 0, 6+52 tests, changed scenes 5 (from earlier run). Let me run `task.py check` once to be safe post-renormalize (normalization doesn't affect worktree files). Quick.
+[tool call] pwsh {"command": "$env:PYTHONUTF8='1'; $env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\n$log = Join-Path $env:TEMP 'cth01-final-check.log'\ncmd /c \"uv run --quiet --offline --no-project python task.py check > `\"$log`\" 2>&1\"\nWrite-Output \"CHECK_EXIT=$LASTEXITCODE\"\nSelect-String -Path $log -Pattern 'Ran \\d+ tests|^OK|FAILED' | ForEach-Object { $_.Line }\nWrite-Output '=== final git facts ==='\n\"HEAD: $(git rev-parse --short HEAD) $(git log -1 --format=%s)\"\n\"branch: $(git branch --show-current)  remotes: [$((git remote) -join ',')]\"\n\"staged: $((git diff --cached --name-only | Measure-Object).Count) files\"\n\"worktree dirty vs index: $((git status --porcelain=v1 | Where-Object { $_ -notmatch '^[AM] ' } | Measure-Object).Count) items\"\n\"user.name/email: [$(git config --get user.name)] / [$(git config --get user.email)]\"\n\"gitattributes staged: $(git diff --cached --name-only | Select-String '\\.gitattributes' | Measure-Object | ForEach-Object Count)\"", "description": "Final check and git facts", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+
+### tool call pwsh (seq 1137)
+
+```json
+{"command": "$env:PYTHONUTF8='1'; $env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\n$log = Join-Path $env:TEMP 'cth01-final-check.log'\ncmd /c \"uv run --quiet --offline --no-project python task.py check > `\"$log`\" 2>&1\"\nWrite-Output \"CHECK_EXIT=$LASTEXITCODE\"\nSelect-String -Path $log -Pattern 'Ran \\d+ tests|^OK|FAILED' | ForEach-Object { $_.Line }\nWrite-Output '=== final git facts ==='\n\"HEAD: $(git rev-parse --short HEAD) $(git log -1 --format=%s)\"\n\"branch: $(git branch --show-current)  remotes: [$((git remote) -join ',')]\"\n\"staged: $((git diff --cached --name-only | Measure-Object).Count) files\"\n\"worktree dirty vs index: $((git status --porcelain=v1 | Where-Object { $_ -notmatch '^[AM] ' } | Measure-Object).Count) items\"\n\"user.name/email: [$(git config --get user.name)] / [$(git config --get user.email)]\"\n\"gitattributes staged: $(git diff --cached --name-only | Select-String '\\.gitattributes' | Measure-Object | ForEach-Object Count)\"", "description": "Final check and git facts", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+```
+
+### tool result (seq 1138)
+
+```
+CHECK_EXIT=0
+Ran 6 tests in 0.005s
+OK
+Ran 52 tests in 0.033s
+OK
+=== final git facts ===
+HEAD: fd44870 Initial take-home baseline
+branch: main  remotes: []
+staged: 41 files
+worktree dirty vs index: 0 items
+user.name/email: [] / []
+gitattributes staged: 1
+
+```
+
+## assistant (seq 1142)
+
+[reasoning]
+All verified. Now compose the final answer.
+
+Structure:
+1. 结论：现在符合常规标准，可以提交；但 commit 仍需要你配置身份（这是唯一阻塞）。列出这次为“标准化”补的三件事。
+2. 状态快照（表）：branch/main, HEAD baseline, staged 41, dirty 0, check 0 warnings, tests 6+52, remote none, identity none, tag.
+3. 为什么之前不算标准 & 现在改了什么：EOL 混合、session.md 被判 binary、行尾空白 → .gitattributes + renormalize + 写入 newline="\n" + 清理；core.eol=lf。
+4. 有意为之、不算问题的三点：runs/ force-added（提交要求），4.4MB session，无 LICENSE/CI。
+5. 接下来照着做（分步骤命令）：
+   Step 1 配身份
+   Step 2 提交（消息现成）
+   Step 3 自查（3 条命令 + 预期）
+   Step 4 建空远端仓库 + remote + push（含 tag）
+   Step 5 交卷 commit hash
+   Step 6 可选：让 session 包含 commit（第二次提交）
+6. 注意事项/坑：空仓库、别 push -f、别 git clean -xdf（会删 __pycache__ 无妨但别带 -x 配 -d 误删）、runs 新增子目录要 -f、远端分支名 main。
+7. 一条命令总览（可粘贴）。
+
+Be concise but complete. Use code blocks. Mention paths: project dir absolute path.
+
+Also mention that after commit, if they rerun run.cmd, working tree stays clean (verified) — reassuring.
+
+Also: the plan's earlier statement "先不提交" is respected.
+
+For the commit message, provide a compact version (short subject + bullets) rather than the full 30-line one. Provide heredoc PowerShell snippet.
+
+Let me write it.
+
+One more consideration: `git config core.eol lf` was set locally — mention it (so they're not surprised), and that it's optional/revertible.
+
+Also note the git identity: they can use `--global` or repo-local; give repo-local.
+
+Final answer in Chinese.
+## 结论：现在已经符合常规 Git 仓库标准，可以提交；唯一阻塞是作者身份未配置
+
+我刚做了一轮“提交前标准化”检查与修正，当前状态：
+
+| 项 | 状态 |
+|---|---|
+| 分支 / 历史 | `main`，HEAD = `fd44870`（baseline，tag `take-home-base` 完好），待提交 41 个文件 |
+| 暂存区 | 41 files，18,010 行新增 / 20 行删除；工作区相对暂存区 **0 处差异**（全部已 stage） |
+| 换行/EOL | 仓库内统一 LF（`.gitattributes` + `git add --renormalize`），`git diff --cached --check` **0 条警告** |
+| 忽略规则 | `.gitignore` 生效，`__pycache__/` 未入库；`runs/` 按提交要求用 `-f` 显式加入 |
+| 密钥/敏感信息 | 全仓扫描无密钥、令牌、私钥；session 已把用户名脱敏 |
+| 数据完整性 | 5×100 条 traces、各 summary、`audit.json` 全部 JSON 解析通过 |
+| 重放稳定性 | 再跑一遍 `run.cmd` 后 `git status` 仍然干净（已实测） |
+| 测试 | `6 + 52` 个测试全绿（`task.py check` 退出码 0） |
+| 远端 | 无（等你创建） |
+| **作者身份** | **未配置**（`user.name`、`user.email` 都为空 → `git commit` 会报 `Author identity unknown`） |
+
+### 这轮补的“标准化”修正（之前不算规范）
+
+1. **换行混合**：Python 文本模式在 Windows 上把生成的 JSON 写成 CRLF，与手写文档的 LF 混在一起，`git diff --check` 报了 1.3 万条行尾空白。已加 [.gitattributes](<C-TH-01-candidate (1)/C-TH-01-v1.7/.gitattributes>)（`* text=auto`，显式标 `*.md/*.json/*.jsonl/*.py` 为文本）并 `--renormalize`，仓库内统一 LF，工作区重写后也不会变脏。
+2. **导出的 session md 被判成二进制**：现在已强制按文本处理，GitHub 上能正常看 diff。
+3. **行尾空白 / EOF 空行**：生成脚本改为 `newline="\n"` 写入并去掉行尾填充空格；代码与文档 0 警告。
+4. 顺手设了仓库级 `core.eol=lf`（仅本仓库，可 `git config --unset core.eol` 撤销）。
+
+### 有意为之、不必当成问题
+
+- `runs/` 在 `.gitignore` 里但被 `git add -f` 纳入：题目要求交 `runs/before`、`runs/after`，这是刻意保留的交付物；以后若 `runs/` 下新增目录，仍需 `-f`。
+- `ai-sessions/cth01-session-01.jsonl` 4.4 MB：完整 session 是硬性提交物，GitHub 单文件限制 100 MB，无风险。
+- 没有 LICENSE / CI / CONTRIBUTING：take-home 交付不需要。
+
+---
+
+## 接下来按这个顺序做（PowerShell，可直接粘贴）
+
+**Step 1 — 进入项目并配置仓库级身份**
+
+```powershell
+cd "C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7"
+git config user.name  "你的姓名"
+git config user.email "你的邮箱"
+git config --get user.name; git config --get user.email
+```
+
+**Step 2 — 提交（消息已备好）**
+
+```powershell
+$msg = @'
+C-TH-01: verified success metric, audit, and explicit-target boundary fix
+
+Problem: legacy_task_success only counts "tool receipt received", so it hides
+10 zero-action sessions (unanswered clarification) and 2 wrong-target executions,
+and it scores a never-clarify policy 100/100 while that policy creates 9
+high-risk wrong targets.
+
+Lands:
+- evals/candidate/metrics.py: verified success (correct target, exactly once)
+- arms.py / boundary.py: retained fix, rejected alternative, withdrawn experiment
+- audit.py + review.py: reproducible runs/*, results/* and human-review commands
+- 46 new tests; EVAL_PLAN.md, REPORT.md, ai-sessions/ (full exported session)
+- runs/{before,after,after-contract-strong,withdraw-highrisk-execute,legacy-counterexample}
+
+Numbers (100 public scenes): legacy 90/100 vs verified 88/100; after 89/100,
+clarifications 43->38, explicit-low p95 930->830ms, cost 0.00314 unchanged,
+high-risk wrong targets 0, duplicate non-idempotent 0.
+
+Reproduce: evals/candidate/run.cmd
+'@
+$msg | git commit -F -
+```
+
+**Step 3 — 提交后自查（应看到 2 个 commit、工作区干净）**
+
+```powershell
+git log --oneline --decorate -3
+git show --stat --oneline HEAD | Select-Object -First 6
+git status --porcelain
+git diff --check HEAD~1 HEAD          # 应无输出
+```
+
+**Step 4 — 建空仓库并推送（关键：远端必须是空仓库，不要初始化 README/.gitignore）**
+
+```powershell
+git remote add origin https://github.com/<你>/<仓库>.git
+git push -u origin main
+git push origin take-home-base        # 可选：把基线 tag 一起推上去，保留起点证据
+```
+
+**Step 5 — 交卷信息**
+
+```powershell
+git rev-parse HEAD    # 这个就是交卷 commit，填在提交表单/邮件里
+```
+
+> 不要把 commit hash 写进 REPORT 再 amend（改完 hash 又变）；hash 放在提交入口处即可。
+
+**Step 6（可选）— 让 AI session 记录也包含这次 commit**
+
+```powershell
+uv run --quiet --offline --no-project python ai-sessions/export_session.py
+git add ai-sessions && git commit -m "chore: refresh AI session export after submission commit"
+git push
+```
+
+不追这一条也完全合规：当前 session 已覆盖全部分析、实现、验证与提交前检查，只是快照早于 commit 本身。
+
+---
+
+## 三个坑，提前说
+
+1. **远端别选“带初始提交”的模板**，否则要先 `git pull --rebase origin main`；空仓库直接 push 最省事。
+2. **别用 `git push -f`**；本地只有基线 + 交卷两个 commit，远端不会冲突。
+3. **提交后再跑一次 `evals\candidate\run.cmd` 不会弄脏工作区**（已验证），但如果 `git clean -xdf` 会把被忽略的 `__pycache__` 清掉（不影响仓库），不要加 `-d` 误删未跟踪但想保留的临时文件。
+
+需要我代为执行 Step 1–3（用你给的身份）时，把姓名和邮箱发我即可；远端推送建议你自己来，避免我接触你的凭据。
+
+## user (seq 1151)
+
+[attached file: README.md (7265 bytes)]
+根据readme的需求做最后的检验把关：本项目的主要问题改进效果、工作量、交付产物完善度是否足够优秀？还有什么可以进一步优化的地方？只回答即可，先不操作文件。
+
+## user (seq 1152)
+
+<hindsight_knowledge>
+This repository has a Hindsight memory + knowledge base (curated, continuously-updated pages plus the raw memory behind them). The tools below are registered, but you must actually CALL them at the right moments:
+- hindsight_search_knowledge_pages(query) — FIRST STOP, and the way IN to everything below. The code shows what is true today but not what was decided or why; memory shows what was decided or said back then but not whether it still holds. Work built from either alone goes wrong: from code alone it quietly re-litigates settled questions, from memory alone it acts on stale claims. Search BEFORE you act whenever the turn is one of these — they are the ones that go wrong silently:
+    • the user reports a bug or a wrong response (the intended behaviour, and the status code or value it should return, may already have been decided);
+    • you are about to write or change a test (what this project expects a change to ship with, and how it asserts, is a convention, not a preference);
+    • you are implementing something new, or two parts have to fit together;
+    • the user asks why something is the way it is, or what is left to do;
+    • you are about to commit, and need to know what the change was supposed to honour.
+  It ranks the pages by relevance and returns the matching passage, which a page title cannot tell you. What it returns is a past record, not a live reading: a claim that something was fixed, passes, or works is what someone said then — check it against the code before you rely on it, and say so when the two disagree.
+  CREDITING IS NOT OPTIONAL AND NOT A JUDGEMENT CALL. If you called this tool and anything it returned reached your reply — quoted, paraphrased, or merely confirming what you were about to say — open that part with a markdown blockquote, exactly: "> 🧠 **From Hindsight memory (<page>)** — <the specific facts you drew on>". Rewriting a snippet in your own words does not make it yours. A search that turned up nothing useful needs no mention at all — just carry on.
+- hindsight_list_knowledge_pages / hindsight_read_knowledge_page — BEFORE substantial work, list the pages and read the relevant ones to ground yourself in this repo's architecture, conventions, and past decisions instead of re-deriving them from the code; follow any [[page:<id>]] links you see.
+- hindsight_reflect(query) — when pages are too shallow and you need the WHY: deep reasoning over the repo's full memory for the past decision and exact values that explain a behavior or bug (slower — use deliberately, and credit results with a blockquote header "> 🧠 **From Hindsight memory** — <summary>").
+- hindsight_capture_initiative(title, summary) — right after the user approves a plan or finishes brainstorming a new feature/capability and you are about to start implementing (BEFORE you write any code), call this to record it as a tracked page; then call it AGAIN with relates_to_page_id set to that page whenever the goal, scope, or rationale materially changes mid-work, so the page tracks the current plan and not the opening one. Skip bug fixes, small tweaks, chores, and trivial course-corrections.
+- hindsight_ingest_document(title, content) — save an external document or durable notes/findings you want remembered (not the current conversation — that is captured automatically at session end).
+ALSO your correction tool: when you verify a Hindsight memory is wrong or stale, ingest a "Correction: <topic>" doc stating what memory claimed, what is true now, and the evidence — newer facts supersede older ones.
+No knowledge pages yet — Hindsight is still learning this repo; they'll appear as it processes.
+This tool guide and the page list are re-injected for you periodically as things change.
+</hindsight_knowledge>
+
+<hindsight_knowledge_refresh>
+Reminder — this repo's Hindsight tools are available; call them at the right moments:
+- hindsight_search_knowledge_pages(query) — FIRST STOP, and the way IN to everything below. The code shows what is true today but not what was decided or why; memory shows what was decided or said back then but not whether it still holds. Work built from either alone goes wrong: from code alone it quietly re-litigates settled questions, from memory alone it acts on stale claims. Search BEFORE you act whenever the turn is one of these — they are the ones that go wrong silently:
+    • the user reports a bug or a wrong response (the intended behaviour, and the status code or value it should return, may already have been decided);
+    • you are about to write or change a test (what this project expects a change to ship with, and how it asserts, is a convention, not a preference);
+    • you are implementing something new, or two parts have to fit together;
+    • the user asks why something is the way it is, or what is left to do;
+    • you are about to commit, and need to know what the change was supposed to honour.
+  It ranks the pages by relevance and returns the matching passage, which a page title cannot tell you. What it returns is a past record, not a live reading: a claim that something was fixed, passes, or works is what someone said then — check it against the code before you rely on it, and say so when the two disagree.
+  CREDITING IS NOT OPTIONAL AND NOT A JUDGEMENT CALL. If you called this tool and anything it returned reached your reply — quoted, paraphrased, or merely confirming what you were about to say — open that part with a markdown blockquote, exactly: "> 🧠 **From Hindsight memory (<page>)** — <the specific facts you drew on>". Rewriting a snippet in your own words does not make it yours. A search that turned up nothing useful needs no mention at all — just carry on.
+- hindsight_list_knowledge_pages / hindsight_read_knowledge_page — BEFORE substantial work, list the pages and read the relevant ones to ground yourself in this repo's architecture, conventions, and past decisions instead of re-deriving them from the code; follow any [[page:<id>]] links you see.
+- hindsight_reflect(query) — when pages are too shallow and you need the WHY: deep reasoning over the repo's full memory for the past decision and exact values that explain a behavior or bug (slower — use deliberately, and credit results with a blockquote header "> 🧠 **From Hindsight memory** — <summary>").
+- hindsight_capture_initiative(title, summary) — right after the user approves a plan or finishes brainstorming a new feature/capability and you are about to start implementing (BEFORE you write any code), call this to record it as a tracked page; then call it AGAIN with relates_to_page_id set to that page whenever the goal, scope, or rationale materially changes mid-work, so the page tracks the current plan and not the opening one. Skip bug fixes, small tweaks, chores, and trivial course-corrections.
+- hindsight_ingest_document(title, content) — save an external document or durable notes/findings you want remembered (not the current conversation — that is captured automatically at session end).
+</hindsight_knowledge_refresh>
+
+## assistant (seq 1155)
+
+[reasoning]
+The user attached a new README.md (7265 bytes) — this is likely C-TH-03's README (which was 7265 bytes in the workspace listing!). Wait, earlier listing: `C-TH-03-candidate (1)\C-TH-03-v1.2\README.md 7265`. So the user attached the C-TH-03 README, not C-TH-01's (6495). Hmm! They say "根据readme的需求做最后的检验把关：本项目的主要问题改进效果、工作量、交付产物完善度是否足够优秀？"
+
+"根据readme的需求" — which readme? The attached one is 7265 bytes = C-TH-03's README. That would be a different project (03). But the question mentions "本项目" — the project we've been working on (01). The attachment may be a mistake, OR they intend to check against the attached README (03). Let me read the attachment to see which project it describes.
+
+Critical: 01's README is the one we've been following. If the attached README is 03's, I must point that out and check against the correct one. Let me read the attachment.
+
+Also per instructions: read the saved path with file tools. Let me read it.
+
+Also they asked "只回答即可，先不操作文件" — answer only, no file operations. So: read-only analysis; no edits.
+
+Let me read the attachment and compare with 01's README (already read at start).
+
+Then evaluate:
+- 主要问题改进效果
+- 工作量
+- 交付产物完善度
+- 是否足够优秀 (rubric: 不合格/合格/优秀)
+- 可进一步优化处
+
+I should ground in actual current state (already verified numbers). Maybe re-check a couple of facts if needed, but no file ops — reading is fine.
+
+Let me read the attached README.
+[tool call] read {"file_path": "C:\\Users\\[REDACTED:USER]\\.dsh\\attachments\\v1\\files\\b5\\b526af04d46fdf5e502abe492853e6f25804e8375115404df0c2733b55cfce00\\README.md"}
+
+### tool call read (seq 1156)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\.dsh\\attachments\\v1\\files\\b5\\b526af04d46fdf5e502abe492853e6f25804e8375115404df0c2733b55cfce00\\README.md"}
+```
+
+### tool result (seq 1157)
+
+```
+<path>C:\Users\[REDACTED:USER]\.dsh\attachments\v1\files\b5\b526af04d46fdf5e502abe492853e6f25804e8375115404df0c2733b55cfce00\README.md</path>
+<type>file</type>
+<content>
+1: # 数据整理题｜从这里开始
+2:
+3: ## 一句话任务
+4:
+5: 请写一个小程序，把一张混有**重复、修改和错误**的培训反馈表整理干净，再生成两张结果表。
+6:
+7: 不需要了解任何公司系统，也不需要生产经验。材料里出现的 WorkshopPulse 是虚构名字，无需查找；这三份文件就是全部背景。
+8:
+9: **开始前**：如果打算使用 AI，先确认工具能导出完整对话，并从第一句话起为本题新建独立 session（要求见「允许使用 AI」）。
+10:
+11: ## 先认识三份输入
+12:
+13: | 文件 | 它是什么 | 你用它做什么 |
+14: |-|-|-|
+15: | `sessions.csv` | 4 场培训活动的名单 | 确认反馈里写的活动是否真的存在；最后每场活动都要有一行汇总 |
+16: | `feedback.csv` | 大家上传的原始反馈记录 | 从中找出能用的最终反馈，以及重复、修改和错误数据 |
+17: | `rules.md` | 数据整理说明 | 按这里的规则判断什么能用、如何去重、要输出哪些列 |
+18:
+19: CSV 是普通表格文本，可以用 Excel 或文本编辑器打开。第一行是列名，之后每行是一条数据。文件里混有正常反馈、重复上传、后来修改过的反馈和错误数据，需要你按 `rules.md` 逐行判断。
+20:
+21: ## 按这个顺序完成
+22:
+23: 1. 先看 `sessions.csv` 和 `feedback.csv`，弄清每一列表示什么。
+24: 2. 读 `rules.md`，列出检查、去重、选择最新反馈和汇总的顺序。
+25: 3. 写程序并运行。坏数据不能让整次处理失败，要进入拒绝清单。
+26: 4. 用同一份输入再运行一次，确认结果完全一样。
+27: 5. 用少量测试证明最容易出错的规则真的生效。
+28:
+29: ## 需要生成的两份结果
+30:
+31: - `session_summary.csv`：每场活动一行，回答“最终有几个人反馈、平均几分、多少反馈提到了问题”。具体列名、排序、小数位和隐私规则见 `rules.md`。
+32: - `rejected_rows.csv`：每条不能安全使用的原始数据一行，写出原始 `row_id` 和稳定、看得懂的拒绝原因。
+33:
+34: ## 运行环境
+35:
+36: - 语言不限，但程序必须能在一台干净的 macOS、Linux 或 Windows 上，用该语言的标准工具链运行。推荐 Python 3.11 及以上（旧版本对部分 ISO 8601 时间写法支持不全），优先只用标准库；确需第三方依赖时，把安装命令写进说明。
+37: - 运行命令的形式：`<你的命令> <输入目录> <输出目录>`，输入目录就是本材料目录，两份结果写到输出目录。
+38: - 输出文件用 UTF-8 编码、`\n` 换行。
+39:
+40: ## 时间、投入与提问
+41:
+42: - 收到题目后 3 天内提交（自然日）。建议投入约 2 小时，不设硬上限。若 2 小时内做不完，优先保证：程序能运行、两份结果已生成、说明里写清假设与未完成项。
+43: - 这 2 小时里，**写出程序通常只占一小部分**；剩下的时间是留给你核对结果、跑边界情况、确认说明和代码说的是同一件事的。请在说明里把耗时**分开写**：读题与理解材料、产出代码、核对与验证、写说明各花了多久。我们不按总时长评分，但会看这个分布。
+44: - 未完成不等于不合格，但必须说明已完成什么、哪里停止以及下一步会怎么做。
+45: - 做题期间不接受提问。材料没有定义的规则，不要悄悄猜一个答案：把你的假设写进说明，并选择一种每次运行都得到同样结果的处理办法，或者把无法放心判断的数据单独列出来。
+46:
+47: ## 允许使用 AI
+48:
+49: 可以使用任何 AI 工具，用哪一家、用多少、让它做多少都不加减分——**全部交给 AI 完成也可以**。我们要看的只有一件事：你能不能为这份结果负责。
+50:
+51: 请在说明里回答三个问题（没有使用 AI 的，按同样三问回答你自己的做法）：
+52:
+53: 1. **为什么可信**：这份结果凭什么信得过？你做了哪些验证，证据在哪；其中哪些做成了可重复执行的东西（脚本、测试、一条命令），哪些只是一次性看了一眼。
+54: 2. **哪里没把握**：哪些没有验证、哪里可能出错、什么情况下你的结论会不成立。
+55: 3. **关键取舍为什么这么选**：材料里没有给标准答案的地方，你最后选了什么、为什么。方案是 AI 提的也没关系，说清楚你为什么接受它。
+56:
+57: 再用一小段写清楚**你这次的 AI 工作方式**：用了什么工具和模型；给了 AI 哪些上下文（规则文件、技能、记忆、预置提示词等，写清各自干什么就行）；验证是怎么闭环的；你觉得它这次最可能在哪出错。规则文件和技能**不强制附原件**，涉及公司内部信息的只写用途、不要贴内容。
+58:
+59: **开始前先确认你的工具能导出完整对话**，并从第一句话起为本题新建独立 session。可接受的原始记录形式：
+60:
+61: - Claude Code、Codex 等命令行工具：会话原始文件（通常是 `.jsonl`），整份提交。
+62: - ChatGPT、豆包、Kimi 等网页或客户端：官方“分享链接”或“导出数据”功能的产物。
+63: - Cursor、Copilot 等无导出功能的工具：全程不裁剪的录屏，或按时间连续的整页截图。
+64:
+65: 不要向 AI 输入真实公司数据、账号、密钥或个人隐私。工具自动带出的本机路径、用户名等属可接受范围，不需要删改。若日志包含密钥、账号、个人隐私或与本题无关的公司数据，可以自行脱敏：只把敏感片段原位替换为 `[REDACTED:类型]` 占位（如 `[REDACTED:密钥]`），不要删除整行或整条消息，也不要改动其他内容。脱敏后须在说明中写明脱敏了哪些类型、涉及哪些日志文件、用什么方式处理（手工或脚本，脚本请一并提交）。本机路径、用户名如确需脱敏，同样原位替换并声明。用了多个 session 时，可在说明里用几句话标注各自用途，日志本身不动。**等最后一次 AI 回复写完之后再导出**，否则导出的只是中途快照。日志只用于核实过程真实性，不按行文风格评分。Claude Code 的会话文件在 `~/.claude/projects/<项目目录>/` 下。
+66:
+67: ## 最后提交
+68:
+69: 把以下内容打包为一个 zip，回复到发题邮件；或提供一个招聘方可访问的仓库链接。
+70:
+71: 1. 可运行的代码。
+72: 2. 一条从原始输入生成结果的命令。
+73: 3. 实际生成的 `session_summary.csv` 和 `rejected_rows.csv`。
+74: 4. 说明：主体一页以内，至少包含关键处理步骤、哪里没有完成以及为什么、实际耗时，以及「允许使用 AI」一节里的三个问题和 AI 工作方式那一小段（含所用工具与导出方法）；假设清单可另附，不限篇幅。
+75: 5. 你认为最有价值的少量测试。测试数量不作为评分依据。
+76: 6. 使用 AI 时，提交 `AI_SESSION_LOGS/`，其中包含本题用到的全部原始 AI session log：一个 session 一份原始导出，多个 session 全部提交，不合并、不节选；除按「允许使用 AI」一节的规则脱敏外不改写。未使用 AI 时不创建该目录，并在说明中明确写明。
+77:
+78: 提交后会进行 15 分钟现场答辩，面试官只围绕你的提交物追问，现场禁用 AI。我们不要求唯一实现，也不会按是否使用某个库评分。
+
+(End of file - total 78 lines)
+</content>
+```
+
+## assistant (seq 1161)
+
+[reasoning]
+The attached README is **C-TH-03** ("数据整理题" — clean a messy training-feedback CSV, produce session_summary.csv + rejected_rows.csv). It is NOT the project we've been working on (C-TH-01 voice agent). The user says "根据readme的需求做最后的检验把关：本项目的主要问题改进效果、工作量、交付产物完善度是否足够优秀？"
+
+Ambiguity: "本项目" — likely 01 (the one we worked on), but the attached README is 03. Two possibilities:
+(a) They attached the wrong README (meant 01's), and want a final review of the 01 submission.
+(b) They now switched to C-TH-03 and want a review... but nothing has been done for 03 (only sessions.csv 109B, feedback.csv 2588B, rules.md, README). "本项目的主要问题改进效果" — 03 has no "改进" (it's a data-cleaning task, no existing product to improve).
+
+Given the conversation, (a) is far more likely: they want a final gate review of the 01 deliverable against 01's README. The attached file being 03's README is probably a mix-up (they had multiple candidate tasks in the workspace; earlier I noted the 02/03 dirs). But maybe the user intentionally attached 03's README to ask "does our 01 work satisfy this readme?" — no, irrelevant.
+
+I must handle this carefully: point out the mismatch explicitly (the attached README is C-TH-03, 7265 bytes, "数据整理题"; C-TH-01's README is 6495 bytes, "接手一个能用但不够好的 AI 产品"), and then give the review against the 01 README (the project we actually built). Also offer: if they want, I can do a 03 review separately (but nothing built for 03).
+
+I should not silently assume; but I also shouldn't just ask and do nothing. Best: state the mismatch up front, then do the 01 review (which is clearly "本项目"), noting the criteria used. If they meant 03, they can redirect.
+
+Now the substantive review: "主要问题改进效果、工作量、交付产物完善度是否足够优秀？还有什么可以进一步优化的地方？只回答即可，先不操作文件。"
+
+I need to be honest and critical, using the rubric from 01's README:
+- 三档：不合格 / 合格 / 优秀.
+- 合格: 主要成果与结论成立.
+- 优秀: 突出增量：扎实的小改善、纠正重要判断、有价值的取舍依据；保留与撤回同尺度；严重回归不能用总体收益抵消.
+- Also: 验证需覆盖失败案例、新实例、正常回归、边界/代价；断言预期行为，解释 oracle；不能只检查命令没报错或复制策略.
+- 交付: 实现/分析 + 自建评测 + 保留原始工程与测试；EVAL_PLAN（初始+修正）；REPORT ≤1200 中文字；runs/before, runs/after 与自建指标结果；AI session + INDEX；实际投入、未完成项、已知限制。
+
+Let me assess honestly, with strengths and weaknesses:
+
+**改进效果（主要问题）**:
+- The retained change is tiny: +1/100 verified (88→89), 5 fewer clarifications, explicit-low p95 930→830. The main "increment" is measurement correction + evidence + rejection/withdrawal reasoning. Under 01's rubric, "审计或评测工具" is explicitly a valid deliverable, and "纠正重要判断" is a named 优秀 example. So the judgment correction (legacy metric hides failures & rewards the unsafe policy) is genuinely valuable and well-evidenced.
+- But: is the "improvement" enough for 优秀? The delivered product change is +1 completion and 38 clarifications (5 saved); it's honest but marginal. The strongest claim (metric misleading, 94 ceiling, 600ms infeasible, strong routing rejected, high-risk relaxation withdrawn) is analysis, not product improvement. A reviewer could say: "本轮的成果主要是论证，不是改进". That's allowed ("不要求必须修改产品策略代码"), but "扎实的小改善" is only partly met.
+
+Risk: the retained change relies on a **boundary relaxation** (allow execute explicit target not in candidates). The README allows the independent-entry path, and we report both. But a picky reviewer might argue: the retained change's benefit is only achievable outside the original contract, so under the original contract our "improvement" is zero (and the equivalent in-contract fix is rejected on cost). That's a legitimate weakness: the submission's product increment depends on a contract change, and we did not demonstrate it fixes a real bug in a way the product team would accept. Mitigation present: we quantify the rationale (explicit is user-confirmed) and the alternative, plus KnownCost test. Still, it's a "trade-off evidence" contribution more than a shipped fix.
+
+**Evidence/verification quality** (the strongest part):
+- Verified metric with numerators/denominators, grouped.
+- Ceiling analysis using identical observable inputs (5 groups/30 scenes) — strong.
+- Latency floor proof (fixed costs) → goal infeasible.
+- Regression: high-risk wrong = 0, duplicates = 0, minimality of relaxation, retry unchanged.
+- Two rejected/withdrawn arms with numbers — matches rubric's "保留与撤回同尺度".
+- Hand-made scenarios with per-scene oracle rationale; new target names; explicit-stale counterexample counted as cost.
+- Determinism; review tool; one-command reproduction; tests 52.
+- History log audit: correctly identifies it lacks world → can't verify targets; 9 zero-action.
+
+Weaknesses in evidence:
+- The "ceiling 94" is an upper bound with hindsight per observable group; it's fine but its interpretation ("threshold changes worth at most 6") could be challenged: it's an upper bound for *observation-only deterministic single-action* policies, not for e.g. randomized or two-call policies. We state the assumption in code/docstring; REPORT says "阈值类改动最多值 6 条" — slightly stronger than the bound supports (it bounds all single-action policies, including better-than-threshold ones). Wording refinement would help.
+- "5 组/30 条" correction is in EVAL_PLAN (good), but REPORT's 一句话/证据 uses 30 — consistent.
+- The metric definition choice (set_power duplicates not failure) is from PRODUCT — correct.
+- One risk: we count `wrong_target` for any wrong commit; for low-risk set_power wrong target, is it failure? Yes per PRODUCT ("任务目标是对正确目标完成一次预期操作").
+- We didn't measure "user_correction"/"user_complaint" rates as separate outcomes; they're implied. Minor.
+- We didn't test a *new* explicit-missing case that isn't hand-crafted by us? We did: new target names in scenarios + test-time custom scene. Good.
+- We didn't demonstrate the retained change on a *held-out* set (no held-out data exists; only 100 public scenes + hand-made). The README warns small samples. We do state limits.
+
+**工作量 (effort)**:
+- Session ~35 min agent machine time (plus review). README suggests 2h and says "问题数量、代码量和完成速度不决定档位", but also for 03-style tasks they want time split; for 01, "实际投入时间" required. 35 min is below the suggested 2h. Is that a problem? The rubric says speed doesn't determine grade; but a submission that took 35 minutes with AI may look thin on "personal judgment" — the 10-min verification will probe whether the candidate understands the choices. Risk: the candidate (human) must be able to defend every number. Since they didn't do the work, they need to internalize REPORT/EVAL_PLAN and be able to explain: metric precedence, why strong routing rejected, why high-risk relaxation withdrawn, how the boundary entry differs, the 30-scene correction, the 94 ceiling, the p95 floor. I should flag this as the top risk for the interview.
+- Also "实际投入" is written as 35 min Agent machine time; the human review time isn't counted. If the reviewer asks "你自己做了多少", the report is honest but may invite scrutiny. Suggest the human actually does a 20-30 min verification pass (run commands, read traces) and adjust the 投入 line to include their time, e.g., "人工复核 X 分钟". That's both honest and defensible.
+
+**交付产物完善度**:
+- Required: 实现/分析成果 ✓; 自建评测 ✓; 保留原始工程与测试 ✓; EVAL_PLAN（初始+修正）✓; REPORT ≤1200字 ✓ (1000-1103 CJK); runs/before+after+自建指标 ✓; AI session + INDEX ✓ (902+ events, redaction declared); 实际投入/未完成/限制 ✓.
+- Missing/weak:
+  - README requires REPORT "说明已完成增量、收益与代价、保留/撤回/继续观察的理由及结论边界" ✓.
+  - `runs/after` is generated by audit.py rather than the official CLI; acceptable because of boundary path, but a reviewer might want a one-liner to regenerate `runs/after` without running the whole audit (audit.py does it; fine).
+  - The AI session export happened *before* the final git commit; also the session's last event is a tool/call without result (snapshot). Minor presentation issue: the exported JSONL's final truncated call could look odd; and the export doesn't include the commit. We planned optional second commit. Worth flagging as polish.
+  - `ai-sessions/INDEX.md` references seq numbers that may shift? They're stable.
+  - The session md removes trailing spaces (fine) but JSONL keeps exact (fine).
+  - No `SUBMISSION.md` / top-level index of deliverables? REPORT + README covers.
+  - The repo currently has 41 staged files but **no commit** — as of last check, still uncommitted (user hasn't committed). For submission, commit is mandatory. Also git identity still unset.
+  - Task says "提交可访问的 GitLab/GitHub 等仓库链接并注明交卷 commit，或打包完整工程（保留 .git）" — so commit + remote required.
+  - `.gitignore` still ignores runs/ while files are force-tracked: fine but slightly unusual; documented.
+  - The task README mentions not to modify original tests; we added new ones only ✓.
+  - "策略只依赖约定的运行时输入" ✓ proven by test.
+  - "保留原始 simulator.py、data/、已有 tests 及固定模型价格/延迟" ✓.
+  - "旧看板实现位于 voice_agent/evaluation.py；改进指标时仍保留旧口径对照" ✓ (legacy embedded in summary).
+  - Could add: a `RESULTS.md` mapping claim→artifact (they asked earlier; I said maybe unnecessary).
+
+**更值得优化/补强的点** (prioritized, concrete):
+1. **Human verification + 投入时间如实拆分**: run the 4-step review, read 5 changed scenes, adjust REPORT 实际投入 to include human verification minutes; prepare 3 defensible answers for the 10-min verification. (Highest value, zero code risk.)
+2. **Make the retained change's value unambiguous**: currently +1 completion. Could strengthen by also reporting a *cost-neutral* group-level claim: on the 5 explicit-missing scenes, clarification is pure overhead (would cost 600-1200ms for information already given) — quantify "5/50 explicit requests (10%) were re-asking what the user already said" and "1/5 became a total failure". Already in REPORT; could add the 10% relative figure (5/50) explicitly — it's there ("只值 5/50").
+3. **Add a second retained micro-improvement under the original contract** if one exists cost-neutrally: from our sweep, none worked (all_strong +1 but cost/latency blown; thresholds mixed). So no — but we could *demonstrate* in REPORT that we searched the neighborhood (we have the arm table only for 5 arms; could add a small "explored alternatives" table with 3-4 variants showing no Pareto improvement). Currently the REPORT claims "阈值最多值 6 条" via the ceiling; adding the actual sweep results (all_small/all_standard/thr.6/thr.9) as an appendix JSON would strengthen "we looked". That's a real gap: we ran the sweep early but didn't save it as an artifact. An `explored.json` (or extra arm rows) would be valuable evidence.
+4. **Tighten the ceiling claim wording** ("阈值类改动最多值 6 条" → "任何‘每个可观察输入只做一个动作’的确定性策略上限 94，baseline 88，余量 ≤6；且需要事后信息") — accuracy matters in the interview.
+5. **Address the "improvement depends on boundary relaxation" objection head-on**: add one paragraph/table explicitly: "在原契约内，本轮没有可保留的策略改动；唯一等价的修复（明确→strong）成本 0.00614、p95 1280，被拒绝。因此本提交的产品增量是'边界假设 + 取舍依据'，不是原条件下的收益。" REPORT does say "边界放宽的收益不当作原条件下的产品改善" but the framing could be sharper: state "原契约内的增量 = 0"，避免评审以为我们声称了原条件下的改进。This is a credibility issue worth fixing.
+6. **Session freshness**: after commit, re-export + second commit so the session includes the commit; also note the trailing incomplete tool/call event.
+7. **runs/after reproducibility**: ensure `run.cmd` regenerates it from scratch on a clean clone (runs/ is tracked; if deleted, audit.py needs runs/before from task.py; run.cmd order handles). Could add a test that audit can rebuild after deleting runs/ (not necessary; low value).
+8. **Two small robustness items**:
+   - `metrics.summarize_verified` uses `summarize(runs)` from the original module; if a run lacks "acknowledged" it'd break — fine.
+   - `review.py diff` requires same scene order; if someone passes arms in different order it errors — fine.
+   - `audit.py` uses `Path(args.scenarios).relative_to(ROOT)` guarded; on non-Windows path separators differ — cosmetic.
+9. **Cross-platform claim**: README says "环境：Python 3.10+"; our code uses `Path.write_text(..., newline=)` which requires 3.10+ ✓; `compression.zstd` requires 3.14 for the exporter only (documented as optional). But `ai-sessions/export_session.py` would fail on Python 3.10-3.13 — it's optional tooling, but a reviewer might run `task.py check` only. Fine; but maybe note "export_session.py 需 3.14+" (already in docstring).
+10. **Restore/verify `runs/before` provenance**: since we renormalized, the committed traces are LF while `task.py run` writes CRLF on Windows; git normalizes → clean. On Linux, `task.py run` writes LF → also clean. Good. But if someone runs on Windows with core.autocrlf=false and a *different* git config than ours, status compares normalized → clean. OK.
+
+11. **The 10 zero-action failures are left unfixed** — REPORT says continue observing; is that acceptable? It's the biggest failure pool (10%). We showed it's not threshold-fixable. But an ambitious reviewer might ask: could a *different* intervention fix them (e.g., ask a shorter confirmation, or execute+undo, or proactive "I'll act on X, say stop")? We didn't explore alternatives beyond confidence thresholds. Suggest at least naming 2-3 alternative interventions and why not tried (time/scope) in 未完成项 — improves "验证责任".
+
+12. **Measurement gap**: acknowledged vs commits; we use commits. Good.
+
+13. **EVAL_PLAN completeness**: initial plan exists; 5 amendments. Good.
+
+14. **REPORT length**: 1103 CJK — under 1200. Fine.
+
+15. **Missing "改动前/改动后" side-by-side in runs**: before/after traces exist; summary shapes differ (before legacy-only, after verified+legacy). A reviewer diffing summary.json files sees different schemas; we mitigate with verified_summary.json and arms.md. Could be confusing. Minor.
+
+16. **README requirement "自建指标结果，标清 baseline、最终方案及复现命令"** ✓ arms.md + REPORT + README.
+
+17. **"使用 AI 时，提交本题相关完整 session 与 ai-sessions/INDEX.md"** — delivered, but note the session contains the full system prompt and injected context; acceptable.
+
+18. **Personal judgment evidence**: REPORT cites seq numbers; INDEX maps them. Good, but the interview will probe whether the *candidate* made these calls. The REPORT says "主攻方向由用户在选项答复中确定" — honest, but it also means the major decisions were AI-proposed with user approval. That's allowed (AI usage not penalized), but the candidate must own the reasoning.
+
+Now, the overall grade judgment: Based on 01's rubric:
+- 主要成果与结论成立 → yes (合格 criterion met).
+- 优秀 requires "突出的已完成增量：扎实的小改善、纠正重要判断或有价值的取舍依据".
+  - "纠正重要判断": yes — the legacy metric misleads in a direction-reversing way, demonstrated with a counterexample policy (100/100 vs 81/100, 9 high-risk errors). That's a strong, non-trivial judgment correction, and it's reproducible.
+  - "有价值的取舍依据": yes — strong-routing rejection with cost/p95 numbers, high-risk relaxation withdrawal with 3 high-risk errors, boundary fix trade-off.
+  - "扎实的小改善": marginal (+1 completion, 5 clarifications saved, p95 40ms), and it depends on a boundary relaxation.
+So I'd say: **稳的合格，冲优秀有竞争力但不算稳** — the audit half is 优秀-grade evidence; the product-improvement half is thin. A reviewer who weights "已完成增量" heavily and dislikes "analysis-only" could place it at 合格; one who values the metric correction would say 优秀. The main lever to raise the ceiling: make the improvement bigger or make the boundary change feel product-real (e.g., demonstrate 2-3 more concrete fixes under the original contract, or show the metric change leads to a *decision reversal* that a product team would act on).
+
+Is there a missed easy win? Let me think again about what could raise 改进效果 within the original contract:
+- No-exp-low requests where clarify was chosen but the model's top is correct: we measured no threshold separates.
+- Could we use `history` more cleverly? Baseline already strong for history.
+- Could we reduce cost? Baseline 0.00314 already under 0.004.
+- Could we reduce p95 overall? Tail is clarify (+600/1200) and timeout (+500) — only fewer clarifications reduce it.
+- Explicit→small would reduce cost but increase clarifications (worse completion) — tested: 88→88 ok? Earlier "base+expLow->small" gave ok=88, cost 0.00242, p95EL 1280 — no gain.
+So genuinely no more policy headroom; our analysis is the right conclusion. The improvement's smallness is a property of the task/data, and we can argue that. But the submission should make that argument explicit: "在 100 条公开场景上，除'明确指令不被候选否决'外没有找到 Pareto 改进；我们试了 N 个变体，结果如下". The missing artifact is the sweep table (item 3). That would materially strengthen "we looked and the smallness is real", turning a weakness into evidence. This is the single best addition (plus human verification).
+
+Also: the task README says "定向反例可以证明某种错误存在，不能以其样本比例估计线上发生率或总体收益" — we comply.
+
+Another possible gap: "验证至少覆盖所选问题的失败案例、同一原则的新实例、不该退步的正常案例，以及相关边界或代价。" ✓ all four.
+
+"断言预期行为或效果，解释 oracle；不能只检查命令没报错，或复制策略作为答案。" ✓ — we assert exact targets/latencies and explain oracles; we didn't copy policy as answer (tests assert behavior, not policy internals). Hmm: `test_explicit_target` asserts boundary runner executes explicit; `test_no_high_risk_regression` asserts counts. Good.
+
+One subtle risk: our tests assert *exact aggregate numbers* (88, 89, 94, 3, 9). These are facts about the fixed dataset, so fine; but if the grader modifies data (they won't), tests break. Acceptable; arguably good (locks claims).
+
+Another risk: the `ceiling` test asserts 94 — if someone adds scenarios it breaks; fine.
+
+Another: `test_boundary_and_cost.LatencyGoalFeasibility` asserts 4 timeouts and p95 floors — data facts.
+
+Another: `metrics.summarize_verified` calls original `summarize(runs)`; if runs empty → ValueError; guarded.
+
+Potential "severe regression" check: retained arm has high-risk wrong 0, duplicates 0 ✓. But did we check *low-risk* wrong targets? Baseline 2, retained 2 (unchanged) ✓. REPORT table shows 错目标 2 for after — good, no hidden worsening.
+
+One more: the retained arm's `clarified`=38 includes 9 unanswered (vs 10): one fewer failure ✓. And `legacy` 91 (was 90) — interesting: legacy improves by 1 because the explicit case now executes (acknowledged true) — good.
+
+Now effort: the README for 01 says suggested 2h; the deliverable time 35 min + human review. I'd advise the human spends 30-45 min verifying and possibly adding the sweep artifact + a couple of paragraphs; then update 投入 to reflect reality (e.g., 60 min total). Don't inflate dishonestly.
+
+Also: "未纳入 Git 的运行结果、AI session 等可另附文件" — we included them in git; fine.
+
+Let me also check: did we leave `runs/before/summary.json` identical to official format? yes. But `runs/after/summary.json` has a *different* schema (verified+nested legacy). The README asks for runs/after; schema difference could be seen as non-comparable. We added `runs/after/verified_summary.json` but `summary.json` itself is the verified-shaped one. Hmm: for before, summary.json is official; for after, summary.json is our shape. A reviewer comparing runs/before/summary.json vs runs/after/summary.json would see different keys and might think "not comparable". Mitigation exists (arms.md, verified_summary). Could improve by also writing `runs/after/legacy_summary.json` in the official shape. Minor, worth noting.
+
+Also the plan said `runs/after` should be generated by an entry; we have audit.py. OK.
+
+Now, the attached README (03) — should I also comment on it? The user might have attached it accidentally. I'll note briefly: "你附的 README 是 03 数据整理题的（7265B）；01 的是 6495B 的语音助手题。以下按 01 的标准评审；如果你其实想评审 03，告诉我——但 03 目前还没动工。" That's important to avoid confusion.
+
+Hmm, is it possible the user wants me to evaluate whether our 01 deliverable satisfies C-TH-03's README? No, nonsense. Or they might be preparing multiple submissions and mistakenly attached the 03 README. I'll flag.
+
+But careful: maybe they intend "本项目" = 03 now, and want a plan/check? "主要问题改进效果" doesn't fit 03 (no product to improve). And no work done for 03. So flag + proceed with 01.
+
+Let me also verify current facts I'll cite:
+- 41 staged files, uncommitted, identity unset, no remote (from last check).
+- REPORT 1103 CJK? Earlier 1103; then I added the 证据 section → 1103 (after edit). Let me re-verify quickly? The last count after adding section was 1103. Then I didn't change REPORT. So 1103.
+- Tests 6+52.
+- Session 902+ events; after last export it's larger (the export ran several times; last count 1127 lines in the integrity check → 1127 events at that export). Wait, integrity check said `ai-sessions/cth01-session-01.jsonl 1127 lines ok`. Then another export happened (after render_markdown fix) → likely ~1150. I shouldn't cite an exact count unless re-checked; cite "约 1.1k 事件".
+
+Actually, since the user asked "只回答即可，先不操作文件", read-only checks are allowed (they said don't operate on files = don't modify). Running read-only commands is fine but not necessary. I have enough facts. But to be accurate about current numbers (uncommitted status, test counts), I could re-run a quick read-only check. I already ran check earlier (6+52) and status 41 staged. Fine; I'll phrase with "截至刚才".
+
+One more angle: "工作量是否足够优秀" — the rubric says code volume and speed don't determine grade; but the human's actual effort matters for the 10-min defense. I'll say: 工作量（代码+测试+文档）大致 1,000 行有效增量、5 臂 × 100 条重放、52 测试，从"工程完整度"看足够；从"人的投入"看偏轻（35 分钟机器时间），需要你补一次亲自复核来支撑答辩。
+
+Let me also give a concrete "gap list" with priority P0/P1/P2 and effort estimates, no operations:
+P0 (must, 10 min): git commit + identity + push (currently uncommitted!). Without it, submission is incomplete.
+P0: 人工复核一遍（run.cmd + review diff + scene），把"实际投入"改成含人工时间。
+P1 (30-40 min): 补一个 `results/explored.json` + REPORT 小段：把早期 5-6 个变体（all_small/all_standard/thr.6/thr.9/expLow→strong/hi_exec）作为"探索过的邻域"落盘，证明小改善不是没找，而是没有 Pareto 改进。这是把"改进小"从弱点变成证据的最划算动作。（当前只有 5 个臂，缺"试过但放弃的阈值变体"。）
+P1 (10 min): REPORT 里把"原契约内增量=0"说透，避免被误读为声称原条件下收益。
+P1 (10 min): 收紧 ceiling 措辞。
+P2: runs/after 补一份官方口径 summary（legacy_summary.json），统一 before/after 可比性。
+P2: session 在 commit 后重导出 + 第二次提交，让记录含交卷 commit；或保留现状并说明快照时间点。
+P2: 未完成项里列出 2-3 个"零动作"的替代干预（更短确认、先执行后撤销、显式告知默认动作）并说明为何未做——提升"验证责任"。
+P2: 若有时间，评估 "重复 set_power 计开销" 的成本影响（可忽略）——不必。
+
+Also: should the candidate worry about "使用 AI 完成全部也可以，但要看能否负责"? Yes: prepare to explain: why the metric is right, why 94 ceiling, why explicit trust is safe, why strong routing rejected, why high-risk relaxation withdrawn, and what's unfixed. I can offer to write a 10-min 答辩提纲 (but user said no operations; offer).
+
+Also note the mismatch: attached README = 03; if they intended 03, everything differs (no work done there; 03's rules.md/sessions.csv/feedback.csv exist). I'll mention.
+
+Now compose the answer:
+1. 先纠正附件（1 段）。
+2. 总评：三档判断（合格稳、优秀有竞争力但不稳），一句话理由。
+3. 分项打分（改进效果 / 工作量 / 交付完善度），每项: 事实、强项、短板。
+4. 可优化清单（P0/P1/P2, 带预计时间与价值）。
+5. 答辩风险点（3-5 个会被追问的问题 + 每个的答案要点）——这很实用。
+6. 一句总结。
+
+Keep it tight but substantive. Use tables. No file operations.
+
+Length: medium-long is fine given the ask. Let me write.
+
+For the 答辩 questions:
+Q1 "为什么说旧看板会选反方向？" → always-execute-top: legacy 100/100, verified 81/100, 9 high-risk wrong.
+Q2 "为什么 94 是上限？" → identical observable inputs (5 groups/30 scenes), one observable group can only take one action; clarify's success = answered fraction; sum of per-group max = 94. Note it's a bound for deterministic single-action policies; randomization can't exceed max.
+Q3 "explicit 一定对吗？" → 50/50 public scenes explicit==world; no counterexample; KnownCost test shows if stale, we execute the wrong target once and don't ask. Risk accepted only if product confirms explicit is authoritative.
+Q4 "为什么拒绝 strong 路由？" → same +1 completion, but cost 0.00614 > 0.004 and p95EL 1280 vs 830; violates two stated goals.
+Q5 "为什么撤回高风险直接执行？" → verified 85 (vs 88), high-risk wrong 3 (0 before); PRODUCT forbids trading high-risk correctness for aggregate numbers.
+Q6 "600ms 目标为什么达不成？" → 36 条里 4 条超时，固定 500ms；零澄清完美执行 p95 下界 680/830/1280。排除超时后 330。
+Q7 "10 次零动作怎么办？" → 观察：相同观察输入对应不同答案（11 组解答分歧），无可观察信号区分；保留澄清；下一步是改变交互形式而非阈值（未做）。
+Q8 "你自己做了什么？" → 需要 human ownership.
+
+Also mention the "5 组/30 条 was corrected by a test" as evidence of honest self-correction (good for interview).
+
+For 工作量: cite 41 files / ~1,000 lines new code+tests? Let me estimate: metrics 300, arms 120, boundary 120, audit 300, review 250, tests 5 files ~700, scenarios 12 lines, docs ~10KB → ~1,800 lines including tests. I'll say "约 1.8k 行（含 5 个测试文件）+ 约 1.1k 事件 session" without overprecision. Actually let me not guess: say "5 个新模块 + 5 个测试文件（52 个候选测试）+ 12 条自建场景 + 5 臂 × 100 条重放". Safer.
+
+Now write the final answer.
+先指出一个容易出错的地方：**你附的这份 README 是 C-TH-03「数据整理题」（7265 字节，要求清洗 feedback.csv、产出 session_summary.csv / rejected_rows.csv），不是我们做的 C-TH-01「接手一个能用但不够好的 AI 产品」（6495 字节）。**下面我按 C-TH-01 的 README 评分口径，对当前交付做最后把关；如果你其实想让我评估 03，说一声——不过 03 目前只有原始材料，还没动工。
+
+---
+
+## 一、总评：合格很稳，冲“优秀”有竞争力但不稳
+
+按 C-TH-01 的三档定义：**主要成果与结论成立**（合格线）没有疑问；**优秀**要求“突出的已完成增量（扎实的小改善、纠正重要判断、有价值的取舍依据）”。我们手上：
+
+- “纠正重要判断”✅ 强：旧看板会把“从不澄清”评成 100/100，而它制造 9 次高风险错误目标，核实只有 81/100——这是方向性纠错，且可复现。
+- “有价值的取舍依据”✅ 强：明确→strong 被拒绝（成本 0.00614 > 0.004、P95 1280）、放开高风险直接执行被撤回（核实 85、新增 3 次高风险错误），两组数字都保留。
+- “扎实的小改善”⚠️ 偏弱：保留改动只值 **+1 条完成**（88→89）、澄清 43→38、该组 P95 930→830；而且它**依赖一处边界放宽**，在原契约内无法表达。
+
+所以评审若重“产品改进”，可能落在**合格**；若重“纠正判断 + 证据质量”，可以判**优秀**。当前形态的定位是：**一份高质量的审计/评测成果，外加一个真实但很小的产品修复**。
+
+---
+
+## 二、分项把关
+
+### 1) 主要问题改进效果 —— B+（证据 A，增量 C）
+
+| 维度 | 现状 | 评价 |
+|---|---|---|
+| 选的问题是否值得 | 口径错误会让所有取舍方向反掉，优先级确实高于调阈值 | 高价值 |
+| 主张是否成立 | 旧 90/100 vs 核实 88/100；反例臂 100→81；高风险错误 0→9 | 成立且可复算 |
+| 增量大小 | 核实 +1/100、澄清 −5、P95 −100ms、成本不变 | 真实但小 |
+| 是否引入回归 | 高风险错误 0、重复非幂等 0、低风险错目标 2（未变） | 干净 |
+| 增量是否在原契约内 | **不是**：需要“explicit 可越过候选列表”的边界放宽 | 需在答辩中主动说明 |
+
+最容易被追问的一点是：“**原契约内你们其实没有可保留的改进**。”这不是漏洞（题目明确允许审计/取舍类成果），但 REPORT 现在只说“边界放宽的收益不当作原条件下的产品改善”，力度不够——建议改成一句更硬的话：*“原契约内本轮增量=0；等价修复只有 strong 路由，已被成本与 P95 否决，因此提交的是取舍依据而不是产品收益。”* 这样评审不会误以为我们在邀功。
+
+### 2) 工作量 —— 工程密度够，人的投入偏轻
+
+- 工程侧：5 个新模块（metrics / arms / boundary / audit / review）+ 5 个测试文件（52 个候选测试）+ 12 条自建场景 + 5 臂 × 100 条重放 + 三份文档 + 完整 session，作为 2 小时题的产出**不低于常见水平**，且没有堆代码。
+- 人的侧：REPORT 写的“实际投入约 35 分钟”是 Agent 机器时间。题目说“不按总时长评分”，但答辩会核对**你是否亲自跑过、看懂每个数字**。建议你真做一次 20–30 分钟复核，然后把投入拆成“Agent 35 分钟 + 人工复核 X 分钟”——既诚实，也经得起问。
+- 缺一块“**探索过的邻域**”的证据：我们早期试过 all-small / all-standard / 阈值 0.6 / 0.9 / 明确→strong / 高风险放开，但**只保留了 5 个臂**，那几个“试过但没赢”的变体没有落盘。这是把“改进为什么小”从弱点变成证据的最划算补充。
+
+### 3) 交付产物完善度 —— A−
+
+对照 README 的交付清单：
+
+| 要求 | 状态 |
+|---|---|
+| 实现/分析成果 + 自建评测 + 保留原始工程与测试 | ✅ 原件零修改，5 个测试文件 |
+| EVAL_PLAN（初始 + 修正） | ✅ 含 5 条追加更正（含我算错 30 条那条） |
+| REPORT ≤1200 中文字 | ✅ 1103 CJK（表格/命令不计，附核对命令） |
+| runs/before、runs/after + 自建指标结果 + 复现命令 | ✅ 5 臂 + arms.md + audit.json + changed_scenes.md |
+| AI session 完整 + INDEX | ✅ 约 1.1k 事件，含工具调用；已脱敏并声明 |
+| 实际投入、未完成项、已知限制 | ✅ 有，但“未完成项”可以更具体 |
+
+小瑕疵（都不致命）：
+
+1. **仓库还没 commit**：41 个文件已暂存、git 身份未配置、没有 remote——**这是当前唯一“不完整”的硬项**，其余都准备好了。
+2. `runs/after/summary.json` 与 `runs/before/summary.json` **schema 不同**（前者是核实口径、后者是旧看板原生）。我们靠 `arms.md` 和 `verified_summary.json` 弥合，但评审直接 diff 两个 summary 会困惑；补一份官方口径的 `legacy_summary.json` 成本很低。
+3. session 是**提交前快照**，且最后一条是未完成的 tool/call。若在意“记录含交卷 commit”，commit 后重导出并追加一个提交即可。
+4. `ceiling=94` 的措辞：“阈值类改动最多值 6 条”略强于数学结论——94 是“每个可观察输入只做一个动作的确定性策略”的上限，不包括随机化或多次调用。建议改成“任何单动作策略上限 94，baseline 88，余量 ≤6，且需要事后信息”。
+
+---
+
+## 三、建议的优化清单（按性价比排序，不含扩题）
+
+**P0（必须，约 15 分钟）**
+1. 配 git 身份 → 提交 → 建空远端仓库 → push（含 `take-home-base` tag）。
+2. 你亲自跑一遍 `evals\candidate\run.cmd` + `review.py diff` + `review.py scene s-fca8479a13a9246b`，确认 5 条变化场景能对上；把 REPORT 的“实际投入”改成含人工时间的拆分。
+
+**P1（30–40 分钟，最值钱）**
+3. 新增 `results/explored.json`（或 REPORT 一个附录表）：把 early sweep 的 6 个变体（all-small / all-standard / 阈值 0.6 / 阈值 0.9 / 明确→strong / 高风险放开）的核实成功、高风险错误、成本、P95 列出来，配一句“这些都在本轮试过，没有 Pareto 改进，因此保留改动只有明确目标这一条”。这直接回应“你是不是没找够”。
+4. REPORT 内把“**原契约内增量=0**”写死，并说明边界放宽的必要性与代价（`KnownCost` 测试已存在，引用它）。
+5. 收紧 ceiling 措辞（见上）。
+
+**P2（有余力再做）**
+6. `runs/after/legacy_summary.json`（官方口径）让 before/after 可直接对照。
+7. commit 后重导出 session + 第二次提交（`chore: refresh AI session export`），并在 INDEX 标注快照时间点。
+8. “未完成项”补 2–3 个零动作的**替代干预**（更短的确认、先执行后撤销、显式告知默认动作），说明为什么这轮没做——体现验证责任，也避免被问“10 次失败为什么只观察”。
+9. （可选）把 `review.py` 的四条命令加进 `README.md` 的“人工复核”一节（现在在 `evals/candidate/README.md` 里，位置没问题，只是入口深一层）。
+
+---
+
+## 四、10 分钟核验最可能问的 6 个问题（建议提前背熟）
+
+| 追问 | 答案要点 |
+|---|---|
+| 为什么说旧看板会选反方向？ | 从不澄清的策略旧口径 100/100、核实 81/100、新增 9 次高风险错误目标——看板把最不安全的策略评成最优 |
+| 94 上限怎么来的？ | 5 组完全相同的可观察输入（30 条）对应不同真值；一个可观察组只能做一个动作，澄清成功=应答比例，按组取最优再求和 = 94；这是单动作确定性策略的上界 |
+| explicit 凭什么可信？ | 产品定义它是“已确认的明确说法”；50/50 公开场景 explicit==world；若它过期，保留臂会直接执行错目标一次且不澄清（`KnownCost` 测试如实记录） |
+| 为什么不用 strong 修？ | 同样 +1 完成，但成本 0.00614 超 0.004 目标、该组 P95 升到 1280，违反两条明示目标 |
+| 为什么撤回高风险直接执行？ | 核实降到 85，并新增 3 次高风险错误目标；PRODUCT 明令不能用总体收益抵偿高风险正确性 |
+| 600ms 目标为什么达不成？ | 36 条明确低风险里 4 条超时（固定 500ms），零澄清完美执行的 P95 下界 680/830/1280ms；剔除超时后 330ms——这是成本结构问题，不是策略问题 |
+
+如果这 6 个你都能不看稿说清，再补上 P0+P1，我会把这次提交的档位判断从“合格偏上”上调到“**优秀有竞争力的候选**”——但决定档位的不是文件数量，而是你能不能在第 3 条（explored.json）和“原契约内增量=0”这两点上主动坦白，那正是评审最看重的“为结果负责”。
+
+需要我把 P0/P1 落成具体改动时再说，现在按你要求不动文件。
+
+## user (seq 1168)
+
+git我已经人工完成了，优化一下p1，舍弃p2
+
+## user (seq 1169)
+
+<hindsight_knowledge_refresh>
+Reminder — this repo's Hindsight tools are available; call them at the right moments:
+- hindsight_search_knowledge_pages(query) — FIRST STOP, and the way IN to everything below. The code shows what is true today but not what was decided or why; memory shows what was decided or said back then but not whether it still holds. Work built from either alone goes wrong: from code alone it quietly re-litigates settled questions, from memory alone it acts on stale claims. Search BEFORE you act whenever the turn is one of these — they are the ones that go wrong silently:
+    • the user reports a bug or a wrong response (the intended behaviour, and the status code or value it should return, may already have been decided);
+    • you are about to write or change a test (what this project expects a change to ship with, and how it asserts, is a convention, not a preference);
+    • you are implementing something new, or two parts have to fit together;
+    • the user asks why something is the way it is, or what is left to do;
+    • you are about to commit, and need to know what the change was supposed to honour.
+  It ranks the pages by relevance and returns the matching passage, which a page title cannot tell you. What it returns is a past record, not a live reading: a claim that something was fixed, passes, or works is what someone said then — check it against the code before you rely on it, and say so when the two disagree.
+  CREDITING IS NOT OPTIONAL AND NOT A JUDGEMENT CALL. If you called this tool and anything it returned reached your reply — quoted, paraphrased, or merely confirming what you were about to say — open that part with a markdown blockquote, exactly: "> 🧠 **From Hindsight memory (<page>)** — <the specific facts you drew on>". Rewriting a snippet in your own words does not make it yours. A search that turned up nothing useful needs no mention at all — just carry on.
+- hindsight_list_knowledge_pages / hindsight_read_knowledge_page — BEFORE substantial work, list the pages and read the relevant ones to ground yourself in this repo's architecture, conventions, and past decisions instead of re-deriving them from the code; follow any [[page:<id>]] links you see.
+- hindsight_reflect(query) — when pages are too shallow and you need the WHY: deep reasoning over the repo's full memory for the past decision and exact values that explain a behavior or bug (slower — use deliberately, and credit results with a blockquote header "> 🧠 **From Hindsight memory** — <summary>").
+- hindsight_capture_initiative(title, summary) — right after the user approves a plan or finishes brainstorming a new feature/capability and you are about to start implementing (BEFORE you write any code), call this to record it as a tracked page; then call it AGAIN with relates_to_page_id set to that page whenever the goal, scope, or rationale materially changes mid-work, so the page tracks the current plan and not the opening one. Skip bug fixes, small tweaks, chores, and trivial course-corrections.
+- hindsight_ingest_document(title, content) — save an external document or durable notes/findings you want remembered (not the current conversation — that is captured automatically at session end).
+</hindsight_knowledge_refresh>
+
+## assistant (seq 1171)
+
+[reasoning]
+The user says git is done manually. Now optimize P1 items; drop P2.
+
+P1 items:
+3. Add `results/explored.json` (or REPORT appendix table): early sweep variants (all-small / all-standard / threshold 0.6 / threshold 0.9 / explicit→strong / high-risk open) with verified success, high-risk wrong, cost, P95 → shows no Pareto improvement.
+4. REPORT: state "原契约内增量=0" clearly + boundary necessity and cost (cite KnownCost).
+5. Tighten ceiling wording ("阈值类改动最多值 6 条" → single-action policy bound).
+
+So I need to:
+- First inspect current git state (user committed). Check git log, status to know what's clean.
+- Then implement:
+  a) New arms for the explored neighborhood? Currently arms.py has Baseline, ExplicitToStrong, HighRiskExecute, TrustExplicit, AlwaysExecuteTop. Need variants: all-small, all-standard, thresholds 0.6/0.9. Add them as parameterized policies in arms.py (e.g., `ModelFixed`, `ThresholdPolicy`), and an `EXPLORED` list in audit.py to replay and write `results/explored.json` (+ maybe append to arms.md? no — separate table `explored.md`? The user asked to optimize P1 item 3: "新增 results/explored.json（或 REPORT 一个附录表）"。I'll do both: JSON artifact + a small table in REPORT (table not counted).
+  b) Update REPORT: add "试过的邻域" table + statement "原契约内增量=0" + ceiling wording.
+  c) Update EVAL_PLAN? Maybe append amendment (6): explored neighborhood recorded. Good practice since EVAL_PLAN requires amendments for changes; this is an addition, not a direction change. Could append a line.
+  d) README updates (evals/candidate/README.md file table + results list).
+  e) Tests: add a test locking explored results (e.g., no variant Pareto-dominates baseline; all-small etc. numbers). Maybe `test_explored.py` or extend test_no_high_risk_regression. I'll add `test_explored.py` with assertions: no variant has (verified > baseline and high_risk_wrong == 0 and cost <= 0.004 and p95EL <= 930) — i.e., no Pareto improvement; plus exact numbers for each variant.
+  f) Re-run pipeline, regenerate results, re-export session, stage/commit? User did git manually; they said "git我已经人工完成了" — so they committed already. Now changes need staging; should I commit? They said git done (the previous submission commit). After my changes, we need a new commit. I'll stage and ask? Better: implement, verify, then commit with a clear message? The user said "优化一下p1" — implying do the work. Since git identity presumably configured now (they committed), I can commit. Let me check git config and log first. If identity present, commit the P1 changes as a follow-up commit. That seems right; but the user may want to push themselves. I'll commit locally (they've shown they handle remote), and tell them to push.
+
+Wait: they might have committed everything (including my staged changes) then pushed. New changes will be a second commit. Fine.
+
+Let me check state first.
+
+Then details of the explored variants. I need exact numbers from earlier sweep (in-memory, not saved). I'll recompute via a script using arms + runner. Earlier sweep results (single-run, in-memory, verified with a slightly different outcome function than metrics):
+
+From my early sweep (that used a different outcome function: no duplicate handling; but duplicates never occurred except... retry dedupes, so none). Numbers:
+- all_standard: ok=86, no_op=12, wrong=2, hi_wrong=0, cost=0.00300, p95=1530, p95EL=930, clar=48, unans=12
+- all_small: ok=83, no_op=14, wrong=3, cost=0.00100, p95=1380, p95EL=1280, clar=57
+- all_strong: ok=89, no_op=9, wrong=2, cost=0.00900, p95=1980, p95EL=1280, clar=38
+- base+thr.6/0: ok=88, no_op=7, wrong=5, cost=0.00314, p95=1380, clar=31
+- base+thr.9/.8: ok=86, no_op=14, wrong=0, cost=0.00314, p95=1880, clar=55
+- base+hi_exec: ok=85, wrong=5, hi_wrong=3, cost=0.00314
+- base+expLow->small: ok=88, cost=0.00242, p95EL=1280, clar=49
+- explicit→strong: ok=89, cost=0.00614, p95EL=1280
+
+But my metrics `verified_success` counts duplicates for toggle/send_message; in these arms no duplicates occur (retry same key). And `wrong` counts wrong target; note for all_small: wrong=3 (vs baseline 2). Let me recompute all variants with the real metrics to get consistent numbers (verified, zero_action, wrong, high_risk_wrong, dup, clarified, p95, p95EL, cost). I'll implement parameterized arms then run audit's explored section.
+
+Design for arms.py additions:
+```python
+class FixedModel(Baseline):
+    def __init__(self, model): self.model = model
+    def select_model(self, request): return self.model
+
+class ThresholdPolicy(Baseline):
+    """baseline 路由，但改低风险/无 explicit 的 confidence/margin 阈值"""
+    def __init__(self, confidence, margin): ...
+    def choose_action(self, request, prediction):
+        # 与 baseline 相同，除最后阈值；高风险不明确仍澄清
+```
+Careful to keep semantics: baseline choose_action:
+- high & no explicit → clarify
+- explicit → execute if in candidates else clarify
+- else threshold top>=.8 & margin>=.4 → execute else clarify
+So ThresholdPolicy replaces .8/.4.
+
+`FixedModel` needs to apply baseline decide (which uses explicit/threshold) — yes, inherit Baseline.choose_action.
+
+`HighRiskExecute` exists.
+
+`explored` set:
+- "all-small": FixedModel("small")
+- "all-standard": FixedModel("standard")
+- "all-strong": FixedModel("strong")
+- "threshold-0.6": ThresholdPolicy(0.6, 0.0)
+- "threshold-0.9": ThresholdPolicy(0.9, 0.8)
+- "explicit-to-strong": existing
+- "high-risk-execute": existing (already an arm elsewhere; include for completeness? The explored table is about "neighborhood"; include to show the risk frontier)
+- baseline row for reference.
+
+Audit.py: add `EXPLORED` list (key, label, policy, runner) and write `results/explored.json` with summary rows (same shape as arm rows but lighter: legacy, verified, zero, wrong, hi_wrong, dup, clarified, p95, p95EL, cost). Also write a markdown table `results/explored.md`? The user said JSON or REPORT table. I'll do JSON + a REPORT table (md optional). Maybe also append to arms.md? Keep separate: `explored.md` is nice but extra; I'll skip md and put table in REPORT (counted? tables excluded).
+
+Determinism: fine.
+
+Test: `test_explored.py`:
+- loads results/explored.json? That would require audit having run; tests should be self-contained (not depend on results/). Better: replay in tests using arms + runner, assert:
+  - baseline verified 88, hi_wrong 0, cost 0.00314
+  - each variant's verified number as computed
+  - no variant Pareto-dominates baseline: for every variant, NOT (verified >= 89? hmm) ... Define Pareto criterion: verified > baseline (88) AND high_risk_wrong <= 0 AND cost <= 0.004 AND p95_explicit_low <= 930 AND dup == 0. From numbers: all_strong verified 89, hi_wrong 0, cost 0.009 > 0.004 → not dominating due to cost. explicit→strong 89, cost 0.00614 > 0.004 → no. So none dominate. Good test.
+  - Wait, need to check all_strong's verified with real metrics; earlier 89. And wrong=2? all_strong wrong=2, high 0.
+- Runtime: 8 variants × 100 scenes = 800 runs, fast (already 500 runs in tests). Fine.
+
+But careful: `test_explored.py` recomputing 8 arms adds ~0.1s; acceptable.
+
+Also REPORT additions:
+1. In 成果与证据 after 回收/保留 changes: add a small table "试过的邻域（全部无 Pareto 改进）" with 7 variants.
+2. Statement: "原契约内增量 = 0" — where? In 最终取舍与限制: rewrite first sentence: "保留：明确目标优先于候选列表。**在原契约内本轮没有可保留的策略改动（增量=0）**；等价修复只有 strong 路由，被成本与 P95 否决。"
+3. Ceiling wording: "阈值类改动最多值 6 条" → "任何'每个可观察输入只做一个动作'的确定性策略上限 94/100（baseline 88），余量 ≤6 且需要事后信息".
+
+Also update EVAL_PLAN with amendment (6) mentioning explored neighborhood artifact; and (7) maybe ceiling wording correction? Keep concise: one amendment.
+
+Also update evals/candidate/README.md: add explored.json to results list and files table (arms.py description includes variants), and mention `test_explored.py`.
+
+Also `review.py`? Could add `explored` subcommand? Not necessary.
+
+Also `audit.py` prints? Could print a line "explored: no pareto improvement over baseline". Nice.
+
+Now check git state & identity first. Then implement.
+
+Also note: the user said "git我已经人工完成了" — maybe they committed and pushed. My changes will be uncommitted; I should commit? They asked to "优化一下p1" — doing the work includes committing? Earlier they handled git; they may want to commit themselves again. Since they said "git我已经人工完成了" (past), I think they expect me to do the file work; commit decision: I'll stage + commit if identity is configured, then tell them to push. Or ask? Better: do the work, run all checks, then commit locally (it's the natural continuation), and note. If identity missing, leave staged.
+
+Let me check state.
+[tool call] pwsh {"command": "$env:PYTHONUTF8='1'\nWrite-Output '=== log ==='\ngit log --oneline --decorate -4\nWrite-Output '=== status ==='\ngit status --short | Select-Object -First 10\n\"status lines: $((git status --porcelain=v1 | Measure-Object).Count)\"\nWrite-Output '=== identity / remote ==='\n\"user.name  = $(git config --get user.name)\"\n\"user.email = $(git config --get user.email)\"\n\"remotes    = $((git remote -v) -join ' | ')\"\n\"branch     = $(git branch --show-current)\"\nWrite-Output '=== HEAD tree: does results/explored exist? ==='\nTest-Path evals/candidate/results/explored.json\nGet-ChildItem evals/candidate/results | Select-Object Name, Length", "description": "Check post-commit git state before P1 changes", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+
+### tool call pwsh (seq 1172)
+
+```json
+{"command": "$env:PYTHONUTF8='1'\nWrite-Output '=== log ==='\ngit log --oneline --decorate -4\nWrite-Output '=== status ==='\ngit status --short | Select-Object -First 10\n\"status lines: $((git status --porcelain=v1 | Measure-Object).Count)\"\nWrite-Output '=== identity / remote ==='\n\"user.name  = $(git config --get user.name)\"\n\"user.email = $(git config --get user.email)\"\n\"remotes    = $((git remote -v) -join ' | ')\"\n\"branch     = $(git branch --show-current)\"\nWrite-Output '=== HEAD tree: does results/explored exist? ==='\nTest-Path evals/candidate/results/explored.json\nGet-ChildItem evals/candidate/results | Select-Object Name, Length", "description": "Check post-commit git state before P1 changes", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+```
+
+### tool result (seq 1173)
+
+```
+=== log ===
+6ab1a65 (HEAD -> main, origin/main) v1.0
+fd44870 (tag: take-home-base) Initial take-home baseline
+=== status ===
+status lines: 0
+=== identity / remote ===
+user.name  = [REDACTED:USER]
+user.email = 111
+remotes    = origin	git@github.com:[REDACTED:USER]152/C-TH-01-v1.7-LX.git (fetch) | origin	git@github.com:[REDACTED:USER]152/C-TH-01-v1.7-LX.git (push)
+branch     = main
+=== HEAD tree: does results/explored exist? ===
+False
+
+Name               Length
+----               ------
+arms.md               654
+audit.json          36422
+changed_scenes.md    2268
+history_audit.json   2861
+
+
+
+```
+
+## assistant (seq 1177)
+
+[reasoning]
+Git is committed and pushed: commit `6ab1a65 v1.0`, origin/main, working tree clean. Identity configured ([REDACTED:USER] / 111 — email "111" is odd but works; not my business).
+
+Now implement P1:
+
+1. `arms.py`: add `FixedModel`, `ThresholdPolicy` (+ maybe `ThresholdPolicy` used for 0.6/0 and 0.9/0.8).
+2. `audit.py`: add explored variants list; write `results/explored.json`; print one line.
+3. `test_explored.py`: assert exact numbers and no Pareto improvement.
+4. `REPORT.md`: add explored table + "原契约内增量=0" + ceiling wording.
+5. `EVAL_PLAN.md`: append amendment (6).
+6. `evals/candidate/README.md`: add explored.json + test_explored + arms description.
+7. Regenerate + verify + commit & push? They pushed v1.0; I can commit follow-up and push (remote is SSH; auth may work since they used it). Better: commit locally; push is their call? They said git done manually; for new changes, they'd probably want them pushed too. I'll commit locally and tell them to push (or push if it works). Let me decide after commit: try push? If SSH key present in their agent, non-interactive push may work. But pushing without asking might be fine since they already pushed and asked me to optimize P1 (implying delivery). Hmm, "git我已经人工完成了" suggests they own git ops. I'll commit locally (needed for a clean state) and leave push to them, telling them the exact command. Actually if I commit but don't push, the remote is behind — they need one command. Fine.
+
+Let me compute variants carefully.
+
+`ThresholdPolicy` semantics: baseline choose_action with different threshold. Implement:
+
+```python
+class ThresholdPolicy(Baseline):
+    name = "threshold"
+    def __init__(self, confidence=0.8, margin=0.4):
+        self.confidence = confidence
+        self.margin = margin
+    def choose_action(self, request, prediction):
+        if request["risk"] == "high" and not request.get("explicit_target"):
+            return {"kind": "clarify"}
+        explicit = request.get("explicit_target")
+        items = ranked(prediction)
+        if explicit:
+            if any(c["target"] == explicit for c in items):
+                return {"kind": "execute", "target": explicit}
+            return {"kind": "clarify"}
+        if items[0]["confidence"] >= self.confidence and top_margin(prediction) >= self.margin:
+            return {"kind": "execute", "target": items[0]["target"]}
+        return {"kind": "clarify"}
+```
+
+`FixedModel`:
+```python
+class FixedModel(Baseline):
+    def __init__(self, model):
+        self.model = model
+    def select_model(self, request): return self.model
+```
+
+`EXPLORED` in audit.py:
+```python
+EXPLORED = [
+    ("all-small", "全部小模型（省成本）", FixedModel("small"), run),
+    ("all-standard", "全部标准模型", FixedModel("standard"), run),
+    ("all-strong", "全部强模型（买准确率）", FixedModel("strong"), run),
+    ("threshold-0.6", "降低执行阈值到 0.6/0.0（更少澄清）", ThresholdPolicy(0.6, 0.0), run),
+    ("threshold-0.9", "提高执行阈值到 0.9/0.8（更保守）", ThresholdPolicy(0.9, 0.8), run),
+    ("explicit-to-strong", "明确→strong（原契约内修法）", arms.EXPLICIT_TO_STRONG, run),
+    ("high-risk-execute", "高风险按置信度直接执行", arms.HIGH_RISK_EXECUTE, run),
+]
+```
+Baseline row included as reference (reuse before run).
+
+Write `results/explored.json`:
+```json
+{
+  "note": "...",
+  "baseline": {...row...},
+  "variants": [ {key, label, legacy, verified, zero_action, wrong_target, high_risk_wrong, duplicate, clarified, unanswered, p95, p95_explicit_low, cost, pareto_vs_baseline: bool} ],
+  "pareto_improvement_found": false
+}
+```
+Pareto dominance criterion: variant dominates baseline iff verified > baseline.verified AND high_risk_wrong <= baseline.high_risk_wrong(0) AND duplicate <= 0 AND cost <= 0.004 AND p95_explicit_low <= baseline.p95EL(930) AND zero_action <= baseline(10)? Hmm, zero_action is implied by verified. Define: better completion (verified > 88), no high-risk regression, cost within the product target 0.004, explicit-low p95 not worse than baseline (930). Then check none.
+
+Wait: all-strong verified 89, hi 0, cost 0.009 → fails cost. explicit-to-strong 89, cost .00614 → fails. threshold .6: verified 88 (not >). threshold .9: 86. all-standard: 86. all-small: 83. high-risk-execute: 85 + 3 hi wrong. So none dominate ✓.
+
+Hmm, but is 0.004 the right cost constraint? It's PRODUCT's mean cost target. Yes, justify in note.
+
+Also include `p95_explicit_low` for each; from earlier sweep I have approximations but must recompute with real metrics. The audit computes subgroup() for each arm; I'll reuse `subgroup(scenes, runs, EXPLICIT_LOW)`.
+
+I'll compute row via a helper `explored_row(key,label,scenes,runs)` capturing: legacy, verified, zero, wrong, hi_wrong, dup, clarified, unanswered, p95, p95el, cost.
+
+Need p95el from subgroup. Reuse arm_row? arm_row includes lots. I'll write a light row.
+
+Then `explored.json` writes rows + verdict.
+
+Also print: "explored: 7 variants, none improves verified success without violating cost/high-risk/P95 constraints".
+
+Now REPORT table:
+
+| 变体 | 核实成功 | 高风险错误 | 明确低风险 P95 | 平均成本 | 结论 |
+- all-small 83 0 1280 0.001 更差（澄清更多）
+- all-standard 86 0 930 0.003 更差
+- all-strong 89 0 1280 0.009 完成 +1，但成本超 0.004、P95 变差
+- 阈值 0.6 88 0 930 0.00314 完成不变，错目标升到 5
+- 阈值 0.9 86 0 930 0.00314 完成下降、澄清更多
+- 明确→strong 89 0 1280 0.00614 同 all-strong
+- 高风险直接执行 85 3 930 0.00314 撤回
+
+Need exact numbers from recompute; I'll fill after running.
+
+REPORT wording changes:
+- Ceiling sentence: current text: "按“每个可观察组只做一个动作”算，核实成功上限是 94/100，baseline 88。阈值类改动最多值 6 条，且需要事后信息。"
+  → "按“每个可观察输入只做一个动作”算，任何确定性单动作策略的上限是 94/100（baseline 88），余量 ≤6；这已是事后信息下的上界，随机化也不会更高。"
+- Add "原契约内增量=0" in 最终取舍: current first paragraph: "保留：明确目标优先于候选列表。拒绝：..." → prepend: "原契约内本轮没有可保留的策略改动（增量 0）：保留的修复需要边界放宽；等价的原契约修法是 strong 路由，被否决。"
+- Add explored table after the arms table? Better in 成果与证据 after 回归与反证, with a sentence "试过的邻域（全部未通过）：…".
+  Table rows as above.
+  Prose: "为排除“没找够”，还试了 7 个变体：没有一个能在不改坏高风险正确性、成本 ≤0.004、P95 不升的前提下提高核实成功。明细见 `results/explored.json`。"
+  Count CJK ~45. Budget: current 1103; adding ~45 + ~25 (ceiling rewrite roughly same) + ~30 (原契约 statement) ≈ 1203 → over 1200! Need to trim ~30-50 elsewhere.
+
+  Trim candidates:
+  - 个人判断与 AI 交互 paragraph is long (~110 CJK). Can shorten by ~40.
+  - 最终取舍's "未完成：用更好的追问替代澄清、更多自建场景、明确指令下更强的候选约束" — could trim.
+  - 问题与判断 second paragraph.
+
+  I'll write the new text and then measure; adjust as needed to ≤1200.
+
+Let me be careful: the counting excludes lines starting with `|` and ```; the table is free; only prose counts.
+
+New prose additions:
+1. explored intro ~45 CJK.
+2. 原契约内增量=0 sentence ~30 CJK.
+3. ceiling rewrite: roughly same length (maybe +5).
+Total +80 → 1183. OK under 1200 if I keep prose tight. Let me target +70.
+
+Actually current 1103 includes 证据 section. Let me plan final ≤1190.
+
+Also EVAL_PLAN amendment (6):
+"- (6) 2026-10-21 补充（提交 v1.0 之后）：把早期试过但未采用的 6 个策略变体落盘为 `evals/candidate/results/explored.json`（all-small / all-standard / all-strong / 阈值 0.6 / 阈值 0.9 / 明确→strong / 高风险直接执行），并加 `test_explored.py` 断言"没有一个变体能在不引入高风险错误、成本 ≤0.004、明确低风险 P95 不升的前提下提高核实成功"。目的：把"改进很小"从推测变成可核对的事实，而不是事后叙事。"
+
+Also README updates.
+
+Tests: `test_explored.py` — recompute variants and assert:
+- baseline verified 88, hi 0.
+- exact verified per variant (compute first, then hardcode).
+- pareto check false.
+- all_strong cost > 0.004; threshold .6 wrong_target == 5; threshold .9 zero_action > 10.
+- deterministic.
+
+Careful runtime: 8 × 100 runs ≈ 800 × ~0.2ms = fine.
+
+Implementation plan:
+1. Edit arms.py (add classes; update POLICIES? not necessary).
+2. Edit audit.py: import arms classes; add EXPLORED, explored_row, write JSON, print.
+3. Write test_explored.py.
+4. Update REPORT, EVAL_PLAN, README.
+5. Run run.cmd (check + before + audit + review) → regenerate results including explored.json; ensure tests pass.
+6. Commit (identity exists) + status; tell user to push.
+
+Let me first edit arms.py. Need to read current arms.py around class definitions? I created it; but policy requires read before edit unless created/edited this session — I edited it earlier this session, so OK? Safer to read the tail to place code correctly.
+
+Let me read arms.py fully (130 lines).
+[tool call] read {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\arms.py"}
+
+### tool call read (seq 1178)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\arms.py"}
+```
+
+### tool result (seq 1179)
+
+```
+<path>C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\arms.py</path>
+<type>file</type>
+<content>
+1: """对照臂：只读 observation / prediction / timeout，不读 world。
+2:
+3: ``retry_key`` 一律委托 baseline（幂等重试是本轮不动的已有保障）。每个臂只改一个决定，
+4: 便于把结果差异归因到单点。
+5: """
+6: import sys
+7: from pathlib import Path
+8:
+9: ROOT = Path(__file__).resolve().parents[2]
+10: if str(ROOT) not in sys.path:
+11:     sys.path.insert(0, str(ROOT))
+12:
+13: from voice_agent import policy as baseline  # noqa: E402
+14:
+15:
+16: def ranked(prediction):
+17:     return sorted(
+18:         prediction["candidates"], key=lambda c: c["confidence"], reverse=True
+19:     )
+20:
+21:
+22: def top_margin(prediction):
+23:     items = ranked(prediction)
+24:     second = items[1]["confidence"] if len(items) > 1 else 0.0
+25:     return items[0]["confidence"] - second
+26:
+27:
+28: class Baseline:
+29:     """现状：官方 policy，用于确认对照与原始基线一致。"""
+30:
+31:     name = "baseline"
+32:     description = "官方 policy.py，未改动"
+33:
+34:     def select_model(self, request):
+35:         return baseline.select_model(request)
+36:
+37:     def choose_action(self, request, prediction):
+38:         return baseline.choose_action(request, prediction)
+39:
+40:     def retry_key(self, request, timeout):
+41:         return baseline.retry_key(request, timeout)
+42:
+43:
+44: class ExplicitToStrong(Baseline):
+45:     """拒绝臂：把明确指令一律路由到 strong，使候选列表必然包含 explicit_target。
+46:
+47:     用于检验"在原契约内消除多余澄清"的代价：正确率 +1，但成本与 P95 都变差。
+48:     """
+49:
+50:     name = "explicit-to-strong"
+51:     description = "明确目标请求改走 strong；其余与 baseline 相同"
+52:
+53:     def select_model(self, request):
+54:         if request.get("explicit_target"):
+55:             return "strong"
+56:         return baseline.select_model(request)
+57:
+58:
+59: class HighRiskExecute(Baseline):
+60:     """撤回臂：高风险且无明确目标时，按置信度直接执行，而不是澄清。
+61:
+62:     用于量化"用高风险直接执行换完成率"的代价；一旦出现高风险错误目标即撤回。
+63:     """
+64:
+65:     name = "high-risk-execute"
+66:     description = "高风险无明确目标时按 conf/margin 直接执行"
+67:
+68:     def __init__(self, confidence=0.8, margin=0.4):
+69:         self.confidence = confidence
+70:         self.margin = margin
+71:
+72:     def choose_action(self, request, prediction):
+73:         if request["risk"] == "high" and not request.get("explicit_target"):
+74:             items = ranked(prediction)
+75:             if items[0]["confidence"] >= self.confidence and top_margin(prediction) >= self.margin:
+76:                 return {"kind": "execute", "target": items[0]["target"]}
+77:             return {"kind": "clarify"}
+78:         return baseline.choose_action(request, prediction)
+79:
+80:
+81: class TrustExplicit(Baseline):
+82:     """保留臂：只与 boundary.run_adjusted 配合使用。
+83:
+84:     与 baseline 唯一的差异：当 baseline 本会澄清、而请求带着已确认的 explicit_target 时，
+85:     直接以该目标执行。它不改变 explicit 的语义，也不读候选列表以外的信息。
+86:     """
+87:
+88:     name = "trust-explicit"
+89:     description = "明确目标不再被候选列表否决（需配合 run_adjusted）"
+90:
+91:     def choose_action(self, request, prediction):
+92:         decision = baseline.choose_action(request, prediction)
+93:         if decision["kind"] == "clarify" and request.get("explicit_target"):
+94:             return {"kind": "execute", "target": request["explicit_target"]}
+95:         return decision
+96:
+97:
+98: class AlwaysExecuteTop(Baseline):
+99:     """反例臂：演示旧看板会给出满分。
+100:
+101:     它固定用 standard（与大多数请求的 baseline 路由一致，便于同口径比较），
+102:     总执行置信度最高的候选、从不澄清；旧口径（收到回执）因此 100/100。
+103:     """
+104:
+105:     name = "always-execute-top"
+106:     description = "standard + 总执行 top 候选、从不澄清；旧看板满分"
+107:
+108:     def select_model(self, request):
+109:         return "standard"
+110:
+111:     def choose_action(self, request, prediction):
+112:         return {"kind": "execute", "target": ranked(prediction)[0]["target"]}
+113:
+114:
+115: POLICIES = {
+116:     "baseline": Baseline,
+117:     "explicit-to-strong": ExplicitToStrong,
+118:     "high-risk-execute": HighRiskExecute,
+119:     "trust-explicit": TrustExplicit,
+120:     "always-execute-top": AlwaysExecuteTop,
+121: }
+122:
+123: # 直接可用的实例：模拟器调的是实例方法，测试与 audit 都用这些。
+124: BASELINE = Baseline()
+125: EXPLICIT_TO_STRONG = ExplicitToStrong()
+126: HIGH_RISK_EXECUTE = HighRiskExecute()
+127: TRUST_EXPLICIT = TrustExplicit()
+128: ALWAYS_EXECUTE_TOP = AlwaysExecuteTop()
+
+(End of file - total 128 lines)
+</content>
+```
+
+## assistant (seq 1183)
+
+[reasoning]
+Add `FixedModel` and `ThresholdPolicy` after `ExplicitToStrong` (or after HighRiskExecute). Insert before `TrustExplicit`.
+
+Then update POLICIES with instances? Add fixed/threshold instances maybe not needed (parameterized). Add to `POLICIES` dict only classes without params; skip.
+
+Write edits.
+
+Then audit.py: add EXPLORED section. Need to import classes: `arms.FixedModel`, `arms.ThresholdPolicy`. Add after ARMS definition:
+
+```python
+EXPLORED = [
+    ("all-small", "全部小模型", arms.FixedModel("small"), run),
+    ...
+]
+```
+
+But ARMS uses `run` imported from voice_agent.simulator. Fine.
+
+Then after the ARMS loop in main, compute explored:
+
+```python
+    explored_rows = []
+    for key, label, policy, runner in EXPLORED:
+        variant_runs = replay(scenes, policy, runner)
+        explored_rows.append(explored_row(key, label, scenes, variant_runs))
+    explored = {
+        "note": "早期试过但未采用的变体；判定标准：核实成功高于 baseline、且高风险错误目标不增加、平均成本 ≤0.004、明确低风险 P95 不高于 baseline。",
+        "baseline": {...},
+        "variants": explored_rows,
+        "pareto_improvement_found": any(r["dominates_baseline"] for r in explored_rows),
+    }
+    dump(results_dir / "explored.json", explored)
+```
+
+Define `explored_row`:
+```python
+def explored_row(key, label, scenes, runs):
+    summary = metrics.summarize_verified(scenes, runs, with_groups=False)
+    el = subgroup(scenes, runs, EXPLICIT_LOW)
+    return {
+        "key": key, "label": label,
+        "legacy_task_success": summary["legacy"]["legacy_task_success"],
+        "verified_task_success": summary["verified_task_success"],
+        "zero_action": summary["outcomes"]["no_commit"],
+        "wrong_target": summary["outcomes"]["wrong_target"],
+        "high_risk_wrong_target": summary["high_risk"]["wrong_target"],
+        "duplicate_non_idempotent": summary["non_idempotent"]["duplicate"],
+        "clarified": summary["clarification"]["attempted"],
+        "clarification_unanswered": summary["clarification"]["unanswered"],
+        "p95_latency_ms": summary["p95_latency_ms"],
+        "p95_explicit_low_ms": el["p95_latency_ms"],
+        "mean_model_cost_usd": summary["mean_model_cost_usd"],
+    }
+```
+
+Then baseline row for comparison from before_row (which has explicit_low). Compute dominates in a function:
+
+```python
+def dominates(row, baseline_row, cost_target=0.004):
+    return (
+        row["verified_task_success"]["numerator"] > baseline_row["verified_task_success"]["numerator"]
+        and row["high_risk_wrong_target"]["numerator"] <= baseline_row["high_risk_wrong_target"]["numerator"]
+        and row["duplicate_non_idempotent"]["numerator"] <= baseline_row["duplicate_non_idempotent"]["numerator"]
+        and row["mean_model_cost_usd"] <= cost_target
+        and row["p95_explicit_low_ms"] <= baseline_row["explicit_low"]["p95_latency_ms"]
+    )
+```
+`before_row` shape: from arm_row: has "verified_task_success", "high_risk_wrong_target" (ratio), "duplicate_non_idempotent" (ratio), "mean_model_cost_usd", "explicit_low" dict with p95_latency_ms. Good.
+
+For explored rows, `high_risk_wrong_target` is a ratio dict (from summary) → `.get("numerator")`. I'll store numerator ints for simplicity in explored rows: `"high_risk_wrong_target": summary["high_risk"]["wrong_target"]["numerator"]` (int), `"duplicate_non_idempotent": ...["numerator"]` (int). Cleaner for JSON.
+
+Then baseline ref in explored.json: include a compact dict.
+
+Print: `print("explored: %d variants, pareto_improvement_found=%s" % (...))`.
+
+Now compute expected numbers by running audit after implementation. Then write tests with exact values.
+
+Let me write the arms edit first.
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\arms.py", "new_string": "class FixedModel(Baseline):\n    \"\"\"探索臂：所有请求固定走同一个模型，只改路由、不改决策。\"\"\"\n\n    name = \"fixed-model\"\n    description = \"固定模型，其余与 baseline 相同\"\n\n    def __init__(self, model):\n        self.model = model\n\n    def select_model(self, request):\n        return self.model\n\n\nclass ThresholdPolicy(Baseline):\n    \"\"\"探索臂：只改 baseline 的“无明确目标时执行/澄清”阈值。\n\n    高风险且无明确目标仍然澄清；明确目标仍然优先执行。用于检查“调阈值”\n    是否真能换来完成率，还是只在不同失败之间搬运。\n    \"\"\"\n\n    name = \"threshold\"\n    description = \"保持路由与规则，只改置信度/差距阈值\"\n\n    def __init__(self, confidence=0.8, margin=0.4):\n        self.confidence = confidence\n        self.margin = margin\n\n    def choose_action(self, request, prediction):\n        if request[\"risk\"] == \"high\" and not request.get(\"explicit_target\"):\n            return {\"kind\": \"clarify\"}\n        explicit = request.get(\"explicit_target\")\n        items = ranked(prediction)\n        if explicit:\n            if any(c[\"target\"] == explicit for c in items):\n                return {\"kind\": \"execute\", \"target\": explicit}\n            return {\"kind\": \"clarify\"}\n        if items[0][\"confidence\"] >= self.confidence and top_margin(prediction) >= self.margin:\n            return {\"kind\": \"execute\", \"target\": items[0][\"target\"]}\n        return {\"kind\": \"clarify\"}\n\n\nclass TrustExplicit(Baseline):", "old_string": "class TrustExplicit(Baseline):"}
+
+### tool call edit (seq 1184)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\arms.py", "new_string": "class FixedModel(Baseline):\n    \"\"\"探索臂：所有请求固定走同一个模型，只改路由、不改决策。\"\"\"\n\n    name = \"fixed-model\"\n    description = \"固定模型，其余与 baseline 相同\"\n\n    def __init__(self, model):\n        self.model = model\n\n    def select_model(self, request):\n        return self.model\n\n\nclass ThresholdPolicy(Baseline):\n    \"\"\"探索臂：只改 baseline 的“无明确目标时执行/澄清”阈值。\n\n    高风险且无明确目标仍然澄清；明确目标仍然优先执行。用于检查“调阈值”\n    是否真能换来完成率，还是只在不同失败之间搬运。\n    \"\"\"\n\n    name = \"threshold\"\n    description = \"保持路由与规则，只改置信度/差距阈值\"\n\n    def __init__(self, confidence=0.8, margin=0.4):\n        self.confidence = confidence\n        self.margin = margin\n\n    def choose_action(self, request, prediction):\n        if request[\"risk\"] == \"high\" and not request.get(\"explicit_target\"):\n            return {\"kind\": \"clarify\"}\n        explicit = request.get(\"explicit_target\")\n        items = ranked(prediction)\n        if explicit:\n            if any(c[\"target\"] == explicit for c in items):\n                return {\"kind\": \"execute\", \"target\": explicit}\n            return {\"kind\": \"clarify\"}\n        if items[0][\"confidence\"] >= self.confidence and top_margin(prediction) >= self.margin:\n            return {\"kind\": \"execute\", \"target\": items[0][\"target\"]}\n        return {\"kind\": \"clarify\"}\n\n\nclass TrustExplicit(Baseline):", "old_string": "class TrustExplicit(Baseline):"}
+```
+
+### tool result (seq 1185)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\arms.py has been updated successfully.
+```
+
+## assistant (seq 1189)
+
+[reasoning]
+Now audit.py: add EXPLORED + explored_row + dominance + write + print. Need to read audit.py around ARMS definition (lines 30-70) to edit.
+
+I read parts; let me read 30-80.
+[tool call] read {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "limit": 50, "offset": 36}
+
+### tool call read (seq 1190)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "limit": 50, "offset": 36}
+```
+
+### tool result (seq 1191)
+
+```
+<path>C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\audit.py</path>
+<type>file</type>
+<content>
+36:
+37: DEFAULT_SCENARIOS = ROOT / "data" / "public_scenarios.jsonl"
+38: DEFAULT_HISTORY = ROOT / "data" / "history_sessions.jsonl"
+39:
+40: ARMS = [
+41:     {
+42:         "key": "after",
+43:         "label": "保留：明确目标不再被候选列表否决（独立边界入口）",
+44:         "command": "python evals/candidate/audit.py",
+45:         "policy": arms.TRUST_EXPLICIT,
+46:         "runner": boundary.run_adjusted,
+47:     },
+48:     {
+49:         "key": "after-contract-strong",
+50:         "label": "拒绝：明确指令改走 strong（原契约内）",
+51:         "command": "python evals/candidate/audit.py",
+52:         "policy": arms.EXPLICIT_TO_STRONG,
+53:         "runner": run,
+54:     },
+55:     {
+56:         "key": "withdraw-highrisk-execute",
+57:         "label": "撤回：高风险无明确目标时按置信度直接执行",
+58:         "command": "python evals/candidate/audit.py",
+59:         "policy": arms.HIGH_RISK_EXECUTE,
+60:         "runner": run,
+61:     },
+62:     {
+63:         "key": "legacy-counterexample",
+64:         "label": "反例：从不澄清、总执行 top 候选（旧看板满分）",
+65:         "command": "python evals/candidate/audit.py",
+66:         "policy": arms.ALWAYS_EXECUTE_TOP,
+67:         "runner": run,
+68:     },
+69: ]
+70:
+71: EXPLICIT_LOW = lambda s: bool(s["observation"].get("explicit_target")) and s["observation"]["risk"] == "low"  # noqa: E731
+72:
+73:
+74: def replay(scenes, policy, runner):
+75:     return [runner(scene, policy) for scene in scenes]
+76:
+77:
+78: def subgroup(scenes, runs, predicate):
+79:     pairs = [(s, r) for s, r in zip(scenes, runs) if predicate(s)]
+80:     if not pairs:
+81:         return {"sessions": 0}
+82:     return {
+83:         "sessions": len(pairs),
+84:         "verified_task_success": {
+85:             "numerator": sum(1 for s, r in pairs if metrics.verified_success(s, r)),
+
+(Showing lines 36-85 of 299. Use offset=86 to continue.)
+</content>
+```
+
+## assistant (seq 1195)
+
+[reasoning]
+
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "new_string": "# 探索过的邻域：早期试过、但没有采用的路由/阈值变体。\n# 落盘的目的是把“小改善是因为没找够”变成可核对的事实。\nEXPLORED = [\n    (\"all-small\", \"全部小模型（省成本）\", arms.FixedModel(\"small\"), run),\n    (\"all-standard\", \"全部标准模型\", arms.FixedModel(\"standard\"), run),\n    (\"all-strong\", \"全部强模型（买准确率）\", arms.FixedModel(\"strong\"), run),\n    (\"threshold-0.6\", \"执行阈值降到 conf>=0.6、margin>=0（更少澄清）\", arms.ThresholdPolicy(0.6, 0.0), run),\n    (\"threshold-0.9\", \"执行阈值抬到 conf>=0.9、margin>=0.8（更保守）\", arms.ThresholdPolicy(0.9, 0.8), run),\n    (\"explicit-to-strong\", \"明确→strong（原契约内唯一等价修法）\", arms.EXPLICIT_TO_STRONG, run),\n    (\"high-risk-execute\", \"高风险无目标按置信度直接执行（已撤回）\", arms.HIGH_RISK_EXECUTE, run),\n]\n\nCOST_TARGET_USD = 0.004\nEXPLICIT_LOW = lambda s: bool(s[\"observation\"].get(\"explicit_target\")) and s[\"observation\"][\"risk\"] == \"low\"  # noqa: E731", "old_string": "EXPLICIT_LOW = lambda s: bool(s[\"observation\"].get(\"explicit_target\")) and s[\"observation\"][\"risk\"] == \"low\"  # noqa: E731"}
+[tool call] read {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "limit": 30, "offset": 110}
+
+### tool call edit (seq 1196)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "new_string": "# 探索过的邻域：早期试过、但没有采用的路由/阈值变体。\n# 落盘的目的是把“小改善是因为没找够”变成可核对的事实。\nEXPLORED = [\n    (\"all-small\", \"全部小模型（省成本）\", arms.FixedModel(\"small\"), run),\n    (\"all-standard\", \"全部标准模型\", arms.FixedModel(\"standard\"), run),\n    (\"all-strong\", \"全部强模型（买准确率）\", arms.FixedModel(\"strong\"), run),\n    (\"threshold-0.6\", \"执行阈值降到 conf>=0.6、margin>=0（更少澄清）\", arms.ThresholdPolicy(0.6, 0.0), run),\n    (\"threshold-0.9\", \"执行阈值抬到 conf>=0.9、margin>=0.8（更保守）\", arms.ThresholdPolicy(0.9, 0.8), run),\n    (\"explicit-to-strong\", \"明确→strong（原契约内唯一等价修法）\", arms.EXPLICIT_TO_STRONG, run),\n    (\"high-risk-execute\", \"高风险无目标按置信度直接执行（已撤回）\", arms.HIGH_RISK_EXECUTE, run),\n]\n\nCOST_TARGET_USD = 0.004\nEXPLICIT_LOW = lambda s: bool(s[\"observation\"].get(\"explicit_target\")) and s[\"observation\"][\"risk\"] == \"low\"  # noqa: E731", "old_string": "EXPLICIT_LOW = lambda s: bool(s[\"observation\"].get(\"explicit_target\")) and s[\"observation\"][\"risk\"] == \"low\"  # noqa: E731"}
+```
+
+### tool result (seq 1197)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\audit.py has been updated successfully.
+```
+
+### tool call read (seq 1198)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "limit": 30, "offset": 110}
+```
+
+### tool result (seq 1199)
+
+```
+<path>C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\audit.py</path>
+<type>file</type>
+<content>
+110:         "model_mix": dict(sorted(collections.Counter(
+111:             r["events"][0]["model"] for _, r in pairs
+112:         ).items())),
+113:     }
+114:
+115:
+116: def dump(path, obj):
+117:     path.parent.mkdir(parents=True, exist_ok=True)
+118:     path.write_text(
+119:         json.dumps(obj, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+120:         encoding="utf-8",
+121:         newline="\n",
+122:     )
+123:
+124:
+125: def zero_action_detail(scenes, runs):
+126:     return [
+127:         {
+128:             "id": s["id"],
+129:             "text": s["observation"]["text"],
+130:             "risk": s["observation"]["risk"],
+131:             "explicit_target": s["observation"].get("explicit_target"),
+132:             "interaction_mode": s["observation"].get("interaction_mode"),
+133:             "latency_ms": r["latency_ms"],
+134:             "clarified": r["clarified"],
+135:         }
+136:         for s, r in zip(scenes, runs)
+137:         if not r["commits"]
+138:     ]
+139:
+
+(Showing lines 110-139 of 312. Use offset=140 to continue.)
+</content>
+```
+
+## assistant (seq 1203)
+
+[reasoning]
+
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "new_string": "def zero_action_detail(scenes, runs):\n    return [\n        {\n            \"id\": s[\"id\"],\n            \"text\": s[\"observation\"][\"text\"],\n            \"risk\": s[\"observation\"][\"risk\"],\n            \"explicit_target\": s[\"observation\"].get(\"explicit_target\"),\n            \"interaction_mode\": s[\"observation\"].get(\"interaction_mode\"),\n            \"latency_ms\": r[\"latency_ms\"],\n            \"clarified\": r[\"clarified\"],\n        }\n        for s, r in zip(scenes, runs)\n        if not r[\"commits\"]\n    ]\n\n\ndef explored_row(key, label, scenes, runs):\n    summary = metrics.summarize_verified(scenes, runs, with_groups=False)\n    explicit_low = subgroup(scenes, runs, EXPLICIT_LOW)\n    return {\n        \"key\": key,\n        \"label\": label,\n        \"legacy_task_success\": summary[\"legacy\"][\"legacy_task_success\"],\n        \"verified_task_success\": summary[\"verified_task_success\"],\n        \"zero_action\": summary[\"outcomes\"][\"no_commit\"],\n        \"wrong_target\": summary[\"outcomes\"][\"wrong_target\"],\n        \"high_risk_wrong_target\": summary[\"high_risk\"][\"wrong_target\"][\"numerator\"],\n        \"duplicate_non_idempotent\": summary[\"non_idempotent\"][\"duplicate\"][\"numerator\"],\n        \"clarified\": summary[\"clarification\"][\"attempted\"][\"numerator\"],\n        \"clarification_unanswered\": summary[\"clarification\"][\"unanswered\"][\"numerator\"],\n        \"p95_latency_ms\": summary[\"p95_latency_ms\"],\n        \"p95_explicit_low_ms\": explicit_low[\"p95_latency_ms\"],\n        \"mean_model_cost_usd\": summary[\"mean_model_cost_usd\"],\n    }\n\n\ndef dominates_baseline(row, baseline_row):\n    \"\"\"是否在四个约束下同时优于 baseline：核实成功更高、高风险/重复不增加、\n    平均成本 ≤0.004、明确低风险 P95 不升高。\"\"\"\n    return (\n        row[\"verified_task_success\"][\"numerator\"] > baseline_row[\"verified_task_success\"][\"numerator\"]\n        and row[\"high_risk_wrong_target\"] <= baseline_row[\"high_risk_wrong_target\"][\"numerator\"]\n        and row[\"duplicate_non_idempotent\"] <= baseline_row[\"duplicate_non_idempotent\"][\"numerator\"]\n        and row[\"mean_model_cost_usd\"] <= COST_TARGET_USD\n        and row[\"p95_explicit_low_ms\"] <= baseline_row[\"explicit_low\"][\"p95_latency_ms\"]\n    )\n", "old_string": "def zero_action_detail(scenes, runs):\n    return [\n        {\n            \"id\": s[\"id\"],\n            \"text\": s[\"observation\"][\"text\"],\n            \"risk\": s[\"observation\"][\"risk\"],\n            \"explicit_target\": s[\"observation\"].get(\"explicit_target\"),\n            \"interaction_mode\": s[\"observation\"].get(\"interaction_mode\"),\n            \"latency_ms\": r[\"latency_ms\"],\n            \"clarified\": r[\"clarified\"],\n        }\n        for s, r in zip(scenes, runs)\n        if not r[\"commits\"]\n    ]\n"}
+[tool call] read {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "limit": 50, "offset": 268}
+
+### tool call edit (seq 1204)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "new_string": "def zero_action_detail(scenes, runs):\n    return [\n        {\n            \"id\": s[\"id\"],\n            \"text\": s[\"observation\"][\"text\"],\n            \"risk\": s[\"observation\"][\"risk\"],\n            \"explicit_target\": s[\"observation\"].get(\"explicit_target\"),\n            \"interaction_mode\": s[\"observation\"].get(\"interaction_mode\"),\n            \"latency_ms\": r[\"latency_ms\"],\n            \"clarified\": r[\"clarified\"],\n        }\n        for s, r in zip(scenes, runs)\n        if not r[\"commits\"]\n    ]\n\n\ndef explored_row(key, label, scenes, runs):\n    summary = metrics.summarize_verified(scenes, runs, with_groups=False)\n    explicit_low = subgroup(scenes, runs, EXPLICIT_LOW)\n    return {\n        \"key\": key,\n        \"label\": label,\n        \"legacy_task_success\": summary[\"legacy\"][\"legacy_task_success\"],\n        \"verified_task_success\": summary[\"verified_task_success\"],\n        \"zero_action\": summary[\"outcomes\"][\"no_commit\"],\n        \"wrong_target\": summary[\"outcomes\"][\"wrong_target\"],\n        \"high_risk_wrong_target\": summary[\"high_risk\"][\"wrong_target\"][\"numerator\"],\n        \"duplicate_non_idempotent\": summary[\"non_idempotent\"][\"duplicate\"][\"numerator\"],\n        \"clarified\": summary[\"clarification\"][\"attempted\"][\"numerator\"],\n        \"clarification_unanswered\": summary[\"clarification\"][\"unanswered\"][\"numerator\"],\n        \"p95_latency_ms\": summary[\"p95_latency_ms\"],\n        \"p95_explicit_low_ms\": explicit_low[\"p95_latency_ms\"],\n        \"mean_model_cost_usd\": summary[\"mean_model_cost_usd\"],\n    }\n\n\ndef dominates_baseline(row, baseline_row):\n    \"\"\"是否在四个约束下同时优于 baseline：核实成功更高、高风险/重复不增加、\n    平均成本 ≤0.004、明确低风险 P95 不升高。\"\"\"\n    return (\n        row[\"verified_task_success\"][\"numerator\"] > baseline_row[\"verified_task_success\"][\"numerator\"]\n        and row[\"high_risk_wrong_target\"] <= baseline_row[\"high_risk_wrong_target\"][\"numerator\"]\n        and row[\"duplicate_non_idempotent\"] <= baseline_row[\"duplicate_non_idempotent\"][\"numerator\"]\n        and row[\"mean_model_cost_usd\"] <= COST_TARGET_USD\n        and row[\"p95_explicit_low_ms\"] <= baseline_row[\"explicit_low\"][\"p95_latency_ms\"]\n    )\n", "old_string": "def zero_action_detail(scenes, runs):\n    return [\n        {\n            \"id\": s[\"id\"],\n            \"text\": s[\"observation\"][\"text\"],\n            \"risk\": s[\"observation\"][\"risk\"],\n            \"explicit_target\": s[\"observation\"].get(\"explicit_target\"),\n            \"interaction_mode\": s[\"observation\"].get(\"interaction_mode\"),\n            \"latency_ms\": r[\"latency_ms\"],\n            \"clarified\": r[\"clarified\"],\n        }\n        for s, r in zip(scenes, runs)\n        if not r[\"commits\"]\n    ]\n"}
+```
+
+### tool result (seq 1205)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\audit.py has been updated successfully.
+```
+
+### tool call read (seq 1206)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "limit": 50, "offset": 268}
+```
+
+### tool result (seq 1207)
+
+```
+<path>C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\audit.py</path>
+<type>file</type>
+<content>
+268:     rows.append(before_row)
+269:     dump(runs_dir / "before" / "verified_summary.json", {
+270:         "note": "对官方 runs/before/traces.jsonl 的核实口径；summary.json 仍是旧看板原生输出。",
+271:         "verified": before_row["summary"],
+272:         "explicit_low": before_row["explicit_low"],
+273:         "zero_action": before_row["zero_action"],
+274:     })
+275:
+276:     for arm in ARMS:
+277:         runs = replay(scenes, arm["policy"], arm["runner"])
+278:         (runs_dir / arm["key"]).mkdir(parents=True, exist_ok=True)
+279:         (runs_dir / arm["key"] / "traces.jsonl").write_text(
+280:             "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in runs),
+281:             encoding="utf-8",
+282:             newline="\n",
+283:         )
+284:         row = arm_row(arm["key"], arm["label"], scenes, runs)
+285:         dump(runs_dir / arm["key"] / "summary.json", row["summary"])
+286:         dump(runs_dir / arm["key"] / "verified_summary.json", {
+287:             "verified": row["summary"],
+288:             "explicit_low": row["explicit_low"],
+289:             "zero_action": row["zero_action"],
+290:             "boundary_delta": boundary.BOUNDARY_DELTA if arm["runner"] is boundary.run_adjusted else None,
+291:         })
+292:         rows.append(row)
+293:
+294:     history = metrics.summarize_history(metrics.load_scenes(DEFAULT_HISTORY))
+295:     identical = metrics.identical_input_groups(scenes)
+296:     ceiling = metrics.ceiling(scenes)
+297:     ceiling = {"ceiling": ceiling["ceiling"], "sessions": ceiling["sessions"]}
+298:     floors = {
+299:         model: metrics.latency_floor(
+300:             [s for s in scenes if EXPLICIT_LOW(s)], model
+301:         )
+302:         for model in ("small", "standard", "strong")
+303:     }
+304:
+305:     audit = {
+306:         "scenarios": str(Path(args.scenarios).relative_to(ROOT)) if str(args.scenarios).startswith(str(ROOT)) else args.scenarios,
+307:         "sessions": len(scenes),
+308:         "boundary_delta": boundary.BOUNDARY_DELTA,
+309:         "arms": {row["key"]: row for row in rows},
+310:         "history": history,
+311:         "identical_inputs": identical,
+312:         "ceiling": ceiling,
+313:         "latency_floor_explicit_low": floors,
+314:         "definitions": {
+315:             "verified_task_success": "正确目标且只执行一次预期操作；toggle/send_message 重复执行即失败",
+316:             "legacy_task_success": "旧看板：只统计是否收到工具回执（保留对照）",
+317:             "p95": "nearest-rank，与 voice_agent.evaluation.percentile 相同",
+
+(Showing lines 268-317 of 344. Use offset=318 to continue.)
+</content>
+```
+
+## assistant (seq 1211)
+
+[reasoning]
+
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "new_string": "    history = metrics.summarize_history(metrics.load_scenes(DEFAULT_HISTORY))\n    identical = metrics.identical_input_groups(scenes)\n    ceiling = metrics.ceiling(scenes)\n    ceiling = {\"ceiling\": ceiling[\"ceiling\"], \"sessions\": ceiling[\"sessions\"]}\n    floors = {\n        model: metrics.latency_floor(\n            [s for s in scenes if EXPLICIT_LOW(s)], model\n        )\n        for model in (\"small\", \"standard\", \"strong\")\n    }\n\n    explored_rows = [\n        explored_row(key, label, scenes, replay(scenes, policy, runner))\n        for key, label, policy, runner in EXPLORED\n    ]\n    for row in explored_rows:\n        row[\"dominates_baseline\"] = dominates_baseline(row, before_row)\n    explored = {\n        \"baseline\": {\n            \"verified_task_success\": before_row[\"verified_task_success\"],\n            \"high_risk_wrong_target\": before_row[\"high_risk_wrong_target\"][\"numerator\"],\n            \"duplicate_non_idempotent\": before_row[\"duplicate_non_idempotent\"][\"numerator\"],\n            \"p95_explicit_low_ms\": before_row[\"explicit_low\"][\"p95_latency_ms\"],\n            \"mean_model_cost_usd\": before_row[\"mean_model_cost_usd\"],\n        },\n        \"criteria\": (\n            \"优于 baseline 需同时满足：核实成功更高、高风险错误目标与重复非幂等不增加、\"\n            \"平均成本 <= %s USD、明确低风险 P95 不高于 baseline。\" % COST_TARGET_USD\n        ),\n        \"variants\": explored_rows,\n        \"pareto_improvement_found\": any(row[\"dominates_baseline\"] for row in explored_rows),\n    }\n    dump(results_dir / \"explored.json\", explored)", "old_string": "    history = metrics.summarize_history(metrics.load_scenes(DEFAULT_HISTORY))\n    identical = metrics.identical_input_groups(scenes)\n    ceiling = metrics.ceiling(scenes)\n    ceiling = {\"ceiling\": ceiling[\"ceiling\"], \"sessions\": ceiling[\"sessions\"]}\n    floors = {\n        model: metrics.latency_floor(\n            [s for s in scenes if EXPLICIT_LOW(s)], model\n        )\n        for model in (\"small\", \"standard\", \"strong\")\n    }"}
+[tool call] read {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "limit": 40, "offset": 340}
+
+### tool call edit (seq 1212)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "new_string": "    history = metrics.summarize_history(metrics.load_scenes(DEFAULT_HISTORY))\n    identical = metrics.identical_input_groups(scenes)\n    ceiling = metrics.ceiling(scenes)\n    ceiling = {\"ceiling\": ceiling[\"ceiling\"], \"sessions\": ceiling[\"sessions\"]}\n    floors = {\n        model: metrics.latency_floor(\n            [s for s in scenes if EXPLICIT_LOW(s)], model\n        )\n        for model in (\"small\", \"standard\", \"strong\")\n    }\n\n    explored_rows = [\n        explored_row(key, label, scenes, replay(scenes, policy, runner))\n        for key, label, policy, runner in EXPLORED\n    ]\n    for row in explored_rows:\n        row[\"dominates_baseline\"] = dominates_baseline(row, before_row)\n    explored = {\n        \"baseline\": {\n            \"verified_task_success\": before_row[\"verified_task_success\"],\n            \"high_risk_wrong_target\": before_row[\"high_risk_wrong_target\"][\"numerator\"],\n            \"duplicate_non_idempotent\": before_row[\"duplicate_non_idempotent\"][\"numerator\"],\n            \"p95_explicit_low_ms\": before_row[\"explicit_low\"][\"p95_latency_ms\"],\n            \"mean_model_cost_usd\": before_row[\"mean_model_cost_usd\"],\n        },\n        \"criteria\": (\n            \"优于 baseline 需同时满足：核实成功更高、高风险错误目标与重复非幂等不增加、\"\n            \"平均成本 <= %s USD、明确低风险 P95 不高于 baseline。\" % COST_TARGET_USD\n        ),\n        \"variants\": explored_rows,\n        \"pareto_improvement_found\": any(row[\"dominates_baseline\"] for row in explored_rows),\n    }\n    dump(results_dir / \"explored.json\", explored)", "old_string": "    history = metrics.summarize_history(metrics.load_scenes(DEFAULT_HISTORY))\n    identical = metrics.identical_input_groups(scenes)\n    ceiling = metrics.ceiling(scenes)\n    ceiling = {\"ceiling\": ceiling[\"ceiling\"], \"sessions\": ceiling[\"sessions\"]}\n    floors = {\n        model: metrics.latency_floor(\n            [s for s in scenes if EXPLICIT_LOW(s)], model\n        )\n        for model in (\"small\", \"standard\", \"strong\")\n    }"}
+```
+
+### tool result (seq 1213)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\audit.py has been updated successfully.
+```
+
+### tool call read (seq 1214)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "limit": 40, "offset": 340}
+```
+
+### tool result (seq 1215)
+
+```
+<path>C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\audit.py</path>
+<type>file</type>
+<content>
+340:             "p95": "nearest-rank，与 voice_agent.evaluation.percentile 相同",
+341:         },
+342:     }
+343:     dump(results_dir / "audit.json", audit)
+344:     dump(results_dir / "history_audit.json", history)
+345:     (results_dir / "arms.md").write_text(markdown_table(rows), encoding="utf-8", newline="\n")
+346:
+347:     print(ascii_table(rows))
+348:     print("ceiling=%d/100  identical_inputs(divergent_target groups)=%d/%d scenes" % (
+349:         ceiling["ceiling"],
+350:         identical["divergent_target_groups"],
+351:         identical["scenes_in_divergent_target_groups"],
+352:     ))
+353:     print("explicit_low p95 floor: small=%s standard=%s strong=%s (target 600)" % (
+354:         floors["small"]["p95_latency_ms"],
+355:         floors["standard"]["p95_latency_ms"],
+356:         floors["strong"]["p95_latency_ms"],
+357:     ))
+358:     print("history: zero_action=%s unanswered_clarification=%s can_verify_target=%s" % (
+359:         history["zero_action_sessions"]["numerator"],
+360:         history["clarification_unanswered"]["numerator"],
+361:         history["can_verify_target"],
+362:     ))
+363:     print("wrote %s" % results_dir)
+364:
+365:
+366: if __name__ == "__main__":
+367:     main()
+
+(End of file - total 367 lines)
+</content>
+```
+
+## assistant (seq 1219)
+
+[reasoning]
+
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "new_string": "    print(\"history: zero_action=%s unanswered_clarification=%s can_verify_target=%s\" % (\n        history[\"zero_action_sessions\"][\"numerator\"],\n        history[\"clarification_unanswered\"][\"numerator\"],\n        history[\"can_verify_target\"],\n    ))\n    print(\"explored: %d variants, pareto_improvement_found=%s\" % (\n        len(explored_rows), explored[\"pareto_improvement_found\"],\n    ))\n    print(\"wrote %s\" % results_dir)", "old_string": "    print(\"history: zero_action=%s unanswered_clarification=%s can_verify_target=%s\" % (\n        history[\"zero_action_sessions\"][\"numerator\"],\n        history[\"clarification_unanswered\"][\"numerator\"],\n        history[\"can_verify_target\"],\n    ))\n    print(\"wrote %s\" % results_dir)"}
+[tool call] pwsh {"command": "$env:PYTHONUTF8='1'; $env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\nuv run --quiet --offline --no-project python evals/candidate/audit.py 2>&1 | Select-Object -Last 6\nWrite-Output '=== explored.json ==='\n$code = @'\nimport json\nd = json.load(open(\"evals/candidate/results/explored.json\", encoding=\"utf-8\"))\nprint(\"baseline:\", json.dumps(d[\"baseline\"], ensure_ascii=False))\nprint(\"pareto_improvement_found:\", d[\"pareto_improvement_found\"])\nfor v in d[\"variants\"]:\n    print(\"%-20s verified=%d/%d legacy=%d/%d zero=%d wrong=%d hi=%d dup=%d clar=%d p95=%d p95EL=%s cost=%.5f dominates=%s\" % (\n        v[\"key\"], v[\"verified_task_success\"][\"numerator\"], v[\"verified_task_success\"][\"denominator\"],\n        v[\"legacy_task_success\"][\"numerator\"], v[\"legacy_task_success\"][\"denominator\"],\n        v[\"zero_action\"], v[\"wrong_target\"], v[\"high_risk_wrong_target\"], v[\"duplicate_non_idempotent\"],\n        v[\"clarified\"], v[\"p95_latency_ms\"], v[\"p95_explicit_low_ms\"], v[\"mean_model_cost_usd\"],\n        v[\"dominates_baseline\"]))\n'@\n$code | uv run --quiet --offline --no-project python -", "description": "Generate explored neighborhood results", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+
+### tool call edit (seq 1220)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\audit.py", "new_string": "    print(\"history: zero_action=%s unanswered_clarification=%s can_verify_target=%s\" % (\n        history[\"zero_action_sessions\"][\"numerator\"],\n        history[\"clarification_unanswered\"][\"numerator\"],\n        history[\"can_verify_target\"],\n    ))\n    print(\"explored: %d variants, pareto_improvement_found=%s\" % (\n        len(explored_rows), explored[\"pareto_improvement_found\"],\n    ))\n    print(\"wrote %s\" % results_dir)", "old_string": "    print(\"history: zero_action=%s unanswered_clarification=%s can_verify_target=%s\" % (\n        history[\"zero_action_sessions\"][\"numerator\"],\n        history[\"clarification_unanswered\"][\"numerator\"],\n        history[\"can_verify_target\"],\n    ))\n    print(\"wrote %s\" % results_dir)"}
+```
+
+### tool result (seq 1221)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\audit.py has been updated successfully.
+```
+
+### tool call pwsh (seq 1222)
+
+```json
+{"command": "$env:PYTHONUTF8='1'; $env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\nuv run --quiet --offline --no-project python evals/candidate/audit.py 2>&1 | Select-Object -Last 6\nWrite-Output '=== explored.json ==='\n$code = @'\nimport json\nd = json.load(open(\"evals/candidate/results/explored.json\", encoding=\"utf-8\"))\nprint(\"baseline:\", json.dumps(d[\"baseline\"], ensure_ascii=False))\nprint(\"pareto_improvement_found:\", d[\"pareto_improvement_found\"])\nfor v in d[\"variants\"]:\n    print(\"%-20s verified=%d/%d legacy=%d/%d zero=%d wrong=%d hi=%d dup=%d clar=%d p95=%d p95EL=%s cost=%.5f dominates=%s\" % (\n        v[\"key\"], v[\"verified_task_success\"][\"numerator\"], v[\"verified_task_success\"][\"denominator\"],\n        v[\"legacy_task_success\"][\"numerator\"], v[\"legacy_task_success\"][\"denominator\"],\n        v[\"zero_action\"], v[\"wrong_target\"], v[\"high_risk_wrong_target\"], v[\"duplicate_non_idempotent\"],\n        v[\"clarified\"], v[\"p95_latency_ms\"], v[\"p95_explicit_low_ms\"], v[\"mean_model_cost_usd\"],\n        v[\"dominates_baseline\"]))\n'@\n$code | uv run --quiet --offline --no-project python -", "description": "Generate explored neighborhood results", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+```
+
+### tool result (seq 1223)
+
+```
+legacy-counterexample | 100/100 | 81/100 | 0 | 19 | 9 | 0 | 0/0 | 830 | 830 | 0.003
+ceiling=94/100  identical_inputs(divergent_target groups)=5/30 scenes
+explicit_low p95 floor: small=680 standard=830 strong=1280 (target 600)
+history: zero_action=9 unanswered_clarification=9 can_verify_target=False
+explored: 7 variants, pareto_improvement_found=False
+wrote C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\results
+=== explored.json ===
+baseline: {"duplicate_non_idempotent": 0, "high_risk_wrong_target": 0, "mean_model_cost_usd": 0.00314, "p95_explicit_low_ms": 930, "verified_task_success": {"denominator": 100, "numerator": 88, "rate": 0.88}}
+pareto_improvement_found: False
+all-small            verified=83/100 legacy=86/100 zero=14 wrong=3 hi=0 dup=0 clar=57 p95=1380 p95EL=1280 cost=0.00100 dominates=False
+all-standard         verified=86/100 legacy=88/100 zero=12 wrong=2 hi=0 dup=0 clar=48 p95=1530 p95EL=930 cost=0.00300 dominates=False
+all-strong           verified=89/100 legacy=91/100 zero=9 wrong=2 hi=0 dup=0 clar=38 p95=1980 p95EL=1280 cost=0.00900 dominates=False
+threshold-0.6        verified=88/100 legacy=93/100 zero=7 wrong=5 hi=0 dup=0 clar=31 p95=1380 p95EL=930 cost=0.00314 dominates=False
+threshold-0.9        verified=86/100 legacy=86/100 zero=14 wrong=0 hi=0 dup=0 clar=55 p95=1880 p95EL=930 cost=0.00314 dominates=False
+explicit-to-strong   verified=89/100 legacy=91/100 zero=9 wrong=2 hi=0 dup=0 clar=38 p95=1380 p95EL=1280 cost=0.00614 dominates=False
+high-risk-execute    verified=85/100 legacy=90/100 zero=10 wrong=5 hi=3 dup=0 clar=37 p95=1380 p95EL=930 cost=0.00314 dominates=False
+
+```
+
+## assistant (seq 1227)
+
+[reasoning]
+Numbers confirmed, matching earlier sweep. Note threshold-0.6 legacy=93 (interesting: more executes → higher legacy) with wrong=5 but verified 88 — good illustration.
+
+Now write `test_explored.py` asserting these exact numbers + dominance false + key qualitative facts:
+- baseline verified 88, hi 0, cost .00314, p95EL 930.
+- all-strong verified 89 but cost .009 > .004 → not dominating.
+- threshold-0.6: verified 88, wrong 5, legacy 93 (shows legacy metric rewards it) → dominance false.
+- threshold-0.9: wrong 0 but verified 86, zero 14.
+- all-small: cost .001 but verified 83.
+- explicit-to-strong: verified 89, cost .00614.
+- high-risk-execute: hi 3, verified 85.
+- assert `pareto_improvement_found` equivalent false by computing dominates across variants.
+- determinism: run all-strong twice equal? Expensive; skip or do one.
+- Also assert the exercised classes don't read world: maybe covered elsewhere.
+
+Test runtime: 7 variants × 100 = 700 runs + baseline 100 = 800; plus other tests already do 100×several. Fine (~0.2s).
+
+Implementation: reuse audits? Importing audit would run argparse? No, audit's main is guarded; but importing audit defines EXPLORED etc. Could import `audit` and use `replay`, `explored_row`, `dominates_baseline`, `EXPLORED`. That avoids duplication. But audit imports boundary, arms, metrics — fine. However `audit.EXPLORED` uses shared policy instances (stateless) — fine.
+
+Test:
+```python
+import audit
+scenes = metrics.load_scenes(PUBLIC)
+baseline_runs = [run(s, arms.BASELINE) for s in scenes]
+baseline_row = audit.arm_row("baseline", ..., scenes, baseline_runs)  # arm_row expects runs
+rows = {key: audit.explored_row(key,label,scenes, audit.replay(scenes,pol,runner)) for ...}
+```
+`arm_row` includes summary etc. Use it for baseline_row to feed dominates_baseline.
+
+Assertions on numbers.
+
+Also assert `audit.COST_TARGET_USD == 0.004`.
+
+Maybe assert monotonic sanity: sum verified + zero + wrong... not necessarily.
+
+Add to `test_no_high_risk_regression`? Separate file is cleaner: `test_explored.py`.
+
+Then REPORT/EVAL_PLAN/README edits.
+
+REPORT: let me read current REPORT to place additions precisely and recount.
+
+Then update README (files table + results list + maybe review commands? not needed).
+
+Then run full pipeline + commit.
+
+Let me write test_explored.py now.
+[tool call] write {"content": "\"\"\"探索过的邻域：把“试过但没赢”的变体固定成可核对的事实。\n\n结论是：没有任何变体能在“不增加高风险错误/重复、平均成本 ≤0.004、明确低风险 P95\n不升高”的前提下提高核实成功。数字都由 audit.explored_row 现场重算，不读结果文件。\n\"\"\"\nimport sys\nimport unittest\nfrom pathlib import Path\n\nHERE = Path(__file__).resolve().parent\nROOT = HERE.parents[1]\nfor path in (str(ROOT), str(HERE)):\n    if path not in sys.path:\n        sys.path.insert(0, path)\n\nimport arms\nimport audit\nimport metrics\nfrom voice_agent.simulator import run\n\nPUBLIC = ROOT / \"data\" / \"public_scenarios.jsonl\"\n\n\nclass ExploredNeighborhood(unittest.TestCase):\n    @classmethod\n    def setUpClass(cls):\n        cls.scenes = metrics.load_scenes(PUBLIC)\n        baseline_runs = [run(s, arms.BASELINE) for s in cls.scenes]\n        cls.baseline = audit.arm_row(\"baseline\", \"baseline\", cls.scenes, baseline_runs)\n        cls.rows = {\n            key: audit.explored_row(key, label, cls.scenes, audit.replay(cls.scenes, policy, runner))\n            for key, label, policy, runner in audit.EXPLORED\n        }\n\n    def assert_row(self, key, verified, wrong, high_risk, clarified, cost, p95el):\n        row = self.rows[key]\n        self.assertEqual(row[\"verified_task_success\"][\"numerator\"], verified)\n        self.assertEqual(row[\"verified_task_success\"][\"denominator\"], 100)\n        self.assertEqual(row[\"wrong_target\"], wrong)\n        self.assertEqual(row[\"high_risk_wrong_target\"], high_risk)\n        self.assertEqual(row[\"duplicate_non_idempotent\"], 0)\n        self.assertEqual(row[\"clarified\"], clarified)\n        self.assertEqual(row[\"p95_explicit_low_ms\"], p95el)\n        self.assertAlmostEqual(row[\"mean_model_cost_usd\"], cost, places=5)\n\n    def test_baseline_reference(self):\n        self.assertEqual(self.baseline[\"verified_task_success\"][\"numerator\"], 88)\n        self.assertEqual(self.baseline[\"high_risk_wrong_target\"][\"numerator\"], 0)\n        self.assertEqual(self.baseline[\"explicit_low\"][\"p95_latency_ms\"], 930)\n        self.assertEqual(self.baseline[\"mean_model_cost_usd\"], 0.00314)\n\n    def test_cheap_models_lose_completion(self):\n        self.assert_row(\"all-small\", 83, 3, 0, 57, 0.001, 1280)\n        self.assert_row(\"all-standard\", 86, 2, 0, 48, 0.003, 930)\n\n    def test_strong_model_gains_one_but_breaks_cost(self):\n        self.assert_row(\"all-strong\", 89, 2, 0, 38, 0.009, 1280)\n        self.assertGreater(self.rows[\"all-strong\"][\"mean_model_cost_usd\"], audit.COST_TARGET_USD)\n\n    def test_thresholds_move_failures_around(self):\n        # 降低阈值：澄清少了，但错误目标从 2 升到 5，核实成功没有提高。\n        self.assert_row(\"threshold-0.6\", 88, 5, 0, 31, 0.00314, 930)\n        self.assertEqual(self.rows[\"threshold-0.6\"][\"legacy_task_success\"][\"numerator\"], 93)\n        # 提高阈值：错误目标降到 0，但零动作从 10 升到 14。\n        self.assert_row(\"threshold-0.9\", 86, 0, 0, 55, 0.00314, 930)\n        self.assertEqual(self.rows[\"threshold-0.9\"][\"zero_action\"], 14)\n\n    def test_regressions_are_kept_visible(self):\n        self.assert_row(\"explicit-to-strong\", 89, 2, 0, 38, 0.00614, 1280)\n        self.assert_row(\"high-risk-execute\", 85, 5, 3, 37, 0.00314, 930)\n\n    def test_no_variant_dominates_baseline(self):\n        for key, row in self.rows.items():\n            with self.subTest(variant=key):\n                self.assertFalse(\n                    audit.dominates_baseline(row, self.baseline),\n                    \"%s already dominates baseline; the report claim must change\" % key,\n                )\n\n    def test_all_explored_keys_are_covered(self):\n        self.assertEqual(len(self.rows), len(audit.EXPLORED))\n        self.assertEqual(\n            set(self.rows),\n            {\"all-small\", \"all-standard\", \"all-strong\", \"threshold-0.6\",\n             \"threshold-0.9\", \"explicit-to-strong\", \"high-risk-execute\"},\n        )\n\n\nif __name__ == \"__main__\":\n    unittest.main()\n", "file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\test_explored.py"}
+
+### tool call write (seq 1228)
+
+```json
+{"content": "\"\"\"探索过的邻域：把“试过但没赢”的变体固定成可核对的事实。\n\n结论是：没有任何变体能在“不增加高风险错误/重复、平均成本 ≤0.004、明确低风险 P95\n不升高”的前提下提高核实成功。数字都由 audit.explored_row 现场重算，不读结果文件。\n\"\"\"\nimport sys\nimport unittest\nfrom pathlib import Path\n\nHERE = Path(__file__).resolve().parent\nROOT = HERE.parents[1]\nfor path in (str(ROOT), str(HERE)):\n    if path not in sys.path:\n        sys.path.insert(0, path)\n\nimport arms\nimport audit\nimport metrics\nfrom voice_agent.simulator import run\n\nPUBLIC = ROOT / \"data\" / \"public_scenarios.jsonl\"\n\n\nclass ExploredNeighborhood(unittest.TestCase):\n    @classmethod\n    def setUpClass(cls):\n        cls.scenes = metrics.load_scenes(PUBLIC)\n        baseline_runs = [run(s, arms.BASELINE) for s in cls.scenes]\n        cls.baseline = audit.arm_row(\"baseline\", \"baseline\", cls.scenes, baseline_runs)\n        cls.rows = {\n            key: audit.explored_row(key, label, cls.scenes, audit.replay(cls.scenes, policy, runner))\n            for key, label, policy, runner in audit.EXPLORED\n        }\n\n    def assert_row(self, key, verified, wrong, high_risk, clarified, cost, p95el):\n        row = self.rows[key]\n        self.assertEqual(row[\"verified_task_success\"][\"numerator\"], verified)\n        self.assertEqual(row[\"verified_task_success\"][\"denominator\"], 100)\n        self.assertEqual(row[\"wrong_target\"], wrong)\n        self.assertEqual(row[\"high_risk_wrong_target\"], high_risk)\n        self.assertEqual(row[\"duplicate_non_idempotent\"], 0)\n        self.assertEqual(row[\"clarified\"], clarified)\n        self.assertEqual(row[\"p95_explicit_low_ms\"], p95el)\n        self.assertAlmostEqual(row[\"mean_model_cost_usd\"], cost, places=5)\n\n    def test_baseline_reference(self):\n        self.assertEqual(self.baseline[\"verified_task_success\"][\"numerator\"], 88)\n        self.assertEqual(self.baseline[\"high_risk_wrong_target\"][\"numerator\"], 0)\n        self.assertEqual(self.baseline[\"explicit_low\"][\"p95_latency_ms\"], 930)\n        self.assertEqual(self.baseline[\"mean_model_cost_usd\"], 0.00314)\n\n    def test_cheap_models_lose_completion(self):\n        self.assert_row(\"all-small\", 83, 3, 0, 57, 0.001, 1280)\n        self.assert_row(\"all-standard\", 86, 2, 0, 48, 0.003, 930)\n\n    def test_strong_model_gains_one_but_breaks_cost(self):\n        self.assert_row(\"all-strong\", 89, 2, 0, 38, 0.009, 1280)\n        self.assertGreater(self.rows[\"all-strong\"][\"mean_model_cost_usd\"], audit.COST_TARGET_USD)\n\n    def test_thresholds_move_failures_around(self):\n        # 降低阈值：澄清少了，但错误目标从 2 升到 5，核实成功没有提高。\n        self.assert_row(\"threshold-0.6\", 88, 5, 0, 31, 0.00314, 930)\n        self.assertEqual(self.rows[\"threshold-0.6\"][\"legacy_task_success\"][\"numerator\"], 93)\n        # 提高阈值：错误目标降到 0，但零动作从 10 升到 14。\n        self.assert_row(\"threshold-0.9\", 86, 0, 0, 55, 0.00314, 930)\n        self.assertEqual(self.rows[\"threshold-0.9\"][\"zero_action\"], 14)\n\n    def test_regressions_are_kept_visible(self):\n        self.assert_row(\"explicit-to-strong\", 89, 2, 0, 38, 0.00614, 1280)\n        self.assert_row(\"high-risk-execute\", 85, 5, 3, 37, 0.00314, 930)\n\n    def test_no_variant_dominates_baseline(self):\n        for key, row in self.rows.items():\n            with self.subTest(variant=key):\n                self.assertFalse(\n                    audit.dominates_baseline(row, self.baseline),\n                    \"%s already dominates baseline; the report claim must change\" % key,\n                )\n\n    def test_all_explored_keys_are_covered(self):\n        self.assertEqual(len(self.rows), len(audit.EXPLORED))\n        self.assertEqual(\n            set(self.rows),\n            {\"all-small\", \"all-standard\", \"all-strong\", \"threshold-0.6\",\n             \"threshold-0.9\", \"explicit-to-strong\", \"high-risk-execute\"},\n        )\n\n\nif __name__ == \"__main__\":\n    unittest.main()\n", "file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\test_explored.py"}
+```
+
+### tool result (seq 1229)
+
+```
+<path>C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\test_explored.py</path>
+<type>file</type>
+<content>
+Created file
+</content>
+```
+
+## assistant (seq 1233)
+
+[reasoning]
+
+[tool call] pwsh {"command": "$env:PYTHONUTF8='1'; $env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\nuv run --quiet --offline --no-project python -m unittest discover -s evals/candidate -p \"test_explored.py\" 2>&1 | Select-Object -Last 12\nWrite-Output \"EXIT=$LASTEXITCODE\"", "description": "Run explored-neighborhood tests", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+
+### tool call pwsh (seq 1234)
+
+```json
+{"command": "$env:PYTHONUTF8='1'; $env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\nuv run --quiet --offline --no-project python -m unittest discover -s evals/candidate -p \"test_explored.py\" 2>&1 | Select-Object -Last 12\nWrite-Output \"EXIT=$LASTEXITCODE\"", "description": "Run explored-neighborhood tests", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+```
+
+### tool result (seq 1235)
+
+```
+EXIT=0
+[stderr]
+uv : .......
+所在位置 行:2 字符: 1
++ uv run --quiet --offline --no-project python -m unittest discover -s  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (.......:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.020s
+OK
+
+```
+
+## assistant (seq 1239)
+
+[reasoning]
+7 tests pass.
+
+Now document edits:
+1. REPORT.md — read current content around relevant places, then edit:
+   a. Ceiling sentence in 三条支撑 item 2.
+   b. Add explored table + intro after 回归与反证 (or after 保留改动).
+   c. 最终取舍: add "原契约内增量=0".
+   Need to keep CJK ≤1200.
+2. EVAL_PLAN append amendment (6).
+3. evals/candidate/README.md: add explored.json + test_explored.py + arms description mention.
+
+Let me read REPORT current text (lines 20-45) to edit precisely. I read it earlier; but it changed after adding 证据 section. Let me read lines 12-60.
+[tool call] read {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "limit": 40, "offset": 22}
+
+### tool call read (seq 1240)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "limit": 40, "offset": 22}
+```
+
+### tool result (seq 1241)
+
+```
+<path>C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\REPORT.md</path>
+<type>file</type>
+<content>
+22:
+23: 三条支撑：
+24:
+25: 1. 反例臂“从不澄清、总执行 top 候选”在旧口径是 100/100，核实只有 81/100，并新增 9 次高风险错误目标——旧看板不能用于策略取舍。
+26: 2. 信息上限：5 组可观察输入完全相同却对应不同真值（覆盖 30 条），其中一组三个模型的候选逐字相同、真值与是否回答都是 2:2；按“每个可观察组只做一个动作”算，核实成功上限是 94/100，baseline 88。阈值类改动最多值 6 条，且需要事后信息。
+27: 3. 明确且低风险组 36 条里有 4 条超时（固定 500ms）：零澄清、完美执行的 P95 下界是 830ms（standard）/680ms（small），600ms 目标不是策略能达成的；剔除超时样本后该组 P95 是 330ms。
+28:
+29: 保留改动：只在“所选模型候选缺 `explicit_target`”时，以已确认目标执行（`boundary.run_adjusted` + `TrustExplicit`，独立入口）。5 条明确指令不再被多余澄清：核实 88→89，澄清 43→38，该组 P95 930→830，成本不变，高风险错误与重复仍为 0。
+30:
+31: 回归与反证：`run_adjusted` 在 baseline 策略下与官方 `run` 逐字段相同（放宽是最小的）；同键超时重试仍只 1 次 commit；若 `explicit` 本身错误，保留臂会执行错目标 1 次（人为场景，如实计代价）。
+32:
+33: ## 证据文件与人工复现
+34:
+35: 证据文件（都在仓库内，可直接打开）：
+36:
+37: | 要核对的东西 | 文件 | 内容 |
+38: |---|---|---|
+39: | 逐条运行记录 | `runs/<臂>/traces.jsonl` | 每臂 100 行；含模型、候选、澄清、提交、超时/去重、时延、成本 |
+40: | 旧看板原始输出 | `runs/before/summary.json` | 官方 CLI 生成，未改写 |
+41: | 核实指标 | `runs/<臂>/verified_summary.json`、`evals/candidate/results/audit.json` | 分子/分母、分组、零动作明细、相同输入分组、单动作上限、时延下界 |
+42: | 五臂对照 | `evals/candidate/results/arms.md` | 即上表 |
+43: | 改动落点 | `evals/candidate/results/changed_scenes.md` | before→after 的 5 条逐条细节 |
+44: | 历史日志审计 | `evals/candidate/results/history_audit.json` | 9 条零动作、39 次澄清、无 world 的核实缺口 |
+45: | 自建场景与 oracle | `evals/candidate/scenarios/new_instances.jsonl`、`scenarios/README.md` | 12 条，逐条写明 world 依据 |
+46: | AI 记录 | `ai-sessions/cth01-session-01.jsonl`、`ai-sessions/INDEX.md` | 902 事件（含工具调用）与关键消息位置 |
+47:
+48: 人工复现（约 5 分钟，只读 `runs/`；命令见 `evals/candidate/README.md`）：
+49:
+50: 1. 跑全流程：`evals\candidate\run.cmd`，应得到 `Ran 6 tests OK`、`Ran 52 tests OK` 与五臂表。
+51: 2. 对表：确认 `results/arms.md` 五行与上表一致；`before` 行必须与 `runs/before/summary.json` 完全一致。
+52: 3. 看改动：`review.py diff runs/before/traces.jsonl runs/after/traces.jsonl` 应输出 `changed scenes: 5`，其中 `s-fca8479a13a9246b` 从 `no_commit,1450ms` 变为 `ok,830ms`。
+53: 4. 抽查单条：`review.py scene s-fca8479a13a9246b` 查看输入与完整事件流。
+54: 5. 看反证：`review.py summary runs/legacy-counterexample/traces.jsonl` 应显示旧口径 100/100、核实 81/100、高风险错误 9。
+55:
+56: ## 最终取舍与限制
+57:
+58: 保留：明确目标优先于候选列表。拒绝：明确→strong（多 1 条完成，但成本 0.00614 超过 0.004、该组 P95 升到 1280）。撤回：放开高风险直接执行（核实降到 85，并新增 3 次高风险错误目标）。继续观察：10 次零动作在当前可观察输入下不可区分，保留澄清。
+59:
+60: 边界放宽的收益不当作原条件下的产品改善，原约束结果在同一张表保留。未完成：用更好的追问替代澄清、更多自建场景、明确指令下更强的候选约束。已知限制：explicit 的权威性没有现实证据；该组 P95 830 仍高于 600。
+61:
+
+(Showing lines 22-61 of 70. Use offset=62 to continue.)
+</content>
+```
+
+## assistant (seq 1245)
+
+[reasoning]
+Now edit:
+
+1. Line 26 (ceiling): replace "按“每个可观察组只做一个动作”算，核实成功上限是 94/100，baseline 88。阈值类改动最多值 6 条，且需要事后信息。" → "按“每个可观察输入只做一个动作”算，任何确定性单动作策略的上限是 94/100（baseline 88），余量 ≤6；这已是事后信息下的上界，随机化也不会更高。"
+
+2. After line 31 (回归与反证), insert explored table + sentence:
+```
+为排除“没找够”，又试了 7 个变体：没有一个能在不增加高风险错误、成本 ≤0.004、明确低风险 P95 不升的前提下提高核实成功。明细见 `evals/candidate/results/explored.json`。
+
+| 变体 | 核实成功 | 高风险错误 | 明确低风险 P95 | 平均成本 | 结论 |
+...
+```
+Table lines free; intro sentence ~55 CJK.
+
+3. Line 58 (最终取舍) prepend: "原契约内本轮没有可保留的策略改动（增量 0）；保留的修复需要边界放宽，原契约内的等价修法（strong 路由）被否决。" ~50 CJK. Then current "保留：..." — this creates duplication with 拒绝 sentence. Rewrite line 58 as:
+"原契约内本轮没有可保留的策略改动（**增量 0**）：唯一的等价修法“明确→strong”因成本 0.00614 超过 0.004、该组 P95 升到 1280 被拒绝；放开高风险直接执行因核实降到 85 且新增 3 次高风险错误目标被撤回。保留的修复只在最小边界放宽下成立：明确目标优先于候选列表。继续观察：10 次零动作在当前可观察输入下不可区分，保留澄清。"
+
+That merges 保留/拒绝/撤回/继续观察 into one paragraph with the 增量=0 statement. Count: roughly similar to before (~120 vs 100) + ~30.
+
+4. Total CJK: current 1103; additions ~55 (explored intro) + 30 (final section delta) + ceiling ~+5 = ~1193. Tight but ≤1200. Need to measure and trim if needed.
+
+Maybe trim item 3 in 三条支撑 slightly? Or trim the explored intro to ~40. Let's write and measure; if over, trim.
+
+Also update the "902 事件" in table — session grew (now ~1.2k). Since table lines aren't counted but accuracy matters. Let me get the current event count after next export; I'll update to a generic "1.2k+ 事件" or exact. Better: check current export count later and set exact.
+
+Actually the session export will be re-run at the end; count then. I'll use "约 1.2k 事件" to avoid staleness... but precision is better. Let me just update after export; for now put placeholder? I'll do the export before editing that number. Simpler: change to "完整事件流（含工具调用）与关键消息位置" without count, avoiding stale numbers. Good.
+
+Also line 50: "Ran 6 tests OK、Ran 52 tests OK" → now 52+7=59 candidate tests. Update to "6 + 59" after running. Let me confirm final counts when running full check.
+
+Also README (evals/candidate) updates: add explored.json to results list, test_explored.py to file table, and mention in 人工复核? Add a 6th verification step: `python -c` to read explored? Or `review.py`? Simplest: mention `results/explored.json` + "seven variants, no pareto improvement". Maybe add a step in the reproduction list: `type evals\candidate\results\explored.json`? Not portable. Instead add to 结果文件 list and a line under 人工复核: "想看‘试过什么’：`results/explored.json` 的 `pareto_improvement_found` 应为 false，7 个变体明细在 `variants`。" — that's a good check.
+
+EVAL_PLAN: append amendment (6).
+
+Let me make REPORT edits now.
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "2. 信息上限：5 组可观察输入完全相同却对应不同真值（覆盖 30 条），其中一组三个模型的候选逐字相同、真值与是否回答都是 2:2；按“每个可观察输入只做一个动作”算，任何确定性单动作策略的上限是 94/100（baseline 88），余量 ≤6，且这已是事后信息下的上界。", "old_string": "2. 信息上限：5 组可观察输入完全相同却对应不同真值（覆盖 30 条），其中一组三个模型的候选逐字相同、真值与是否回答都是 2:2；按“每个可观察组只做一个动作”算，核实成功上限是 94/100，baseline 88。阈值类改动最多值 6 条，且需要事后信息。"}
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "回归与反证：`run_adjusted` 在 baseline 策略下与官方 `run` 逐字段相同（放宽是最小的）；同键超时重试仍只 1 次 commit；若 `explicit` 本身错误，保留臂会执行错目标 1 次（人为场景，如实计代价）。\n\n为排除“没找够”，又试了 7 个变体：没有一个能在不增加高风险错误、成本 ≤0.004、明确低风险 P95 不升的前提下提高核实成功（`results/explored.json`）。\n\n| 变体 | 核实成功 | 高风险错误 | 明确低风险 P95 | 平均成本 | 结论 |\n|---|---:|---:|---:|---:|---|\n| 全部 small | 83 | 0 | 1280 | 0.001 | 澄清更多，更差 |\n| 全部 standard | 86 | 0 | 930 | 0.003 | 更差 |\n| 全部 strong | 89 | 0 | 1280 | 0.009 | 完成 +1，成本超 0.004、P95 变差 |\n| 阈值 0.6 / 0.0 | 88 | 0 | 930 | 0.00314 | 澄清 −12，但错目标 2→5 |\n| 阈值 0.9 / 0.8 | 86 | 0 | 930 | 0.00314 | 错目标 0，但零动作 10→14 |\n| 明确→strong | 89 | 0 | 1280 | 0.00614 | 同“全部 strong”，被拒 |\n| 高风险直接执行 | 85 | 3 | 930 | 0.00314 | 撤回 |", "old_string": "回归与反证：`run_adjusted` 在 baseline 策略下与官方 `run` 逐字段相同（放宽是最小的）；同键超时重试仍只 1 次 commit；若 `explicit` 本身错误，保留臂会执行错目标 1 次（人为场景，如实计代价）。"}
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "**原契约内本轮没有可保留的策略改动（增量 0）**：唯一的等价修法“明确→strong”因成本 0.00614 超过 0.004、该组 P95 升到 1280 被拒绝；放开高风险直接执行因核实降到 85 且新增 3 次高风险错误目标被撤回。保留的修复只在最小边界放宽下成立：明确目标优先于候选列表。继续观察：10 次零动作在当前可观察输入下不可区分，保留澄清。", "old_string": "保留：明确目标优先于候选列表。拒绝：明确→strong（多 1 条完成，但成本 0.00614 超过 0.004、该组 P95 升到 1280）。撤回：放开高风险直接执行（核实降到 85，并新增 3 次高风险错误目标）。继续观察：10 次零动作在当前可观察输入下不可区分，保留澄清。"}
+
+### tool call edit (seq 1246)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "2. 信息上限：5 组可观察输入完全相同却对应不同真值（覆盖 30 条），其中一组三个模型的候选逐字相同、真值与是否回答都是 2:2；按“每个可观察输入只做一个动作”算，任何确定性单动作策略的上限是 94/100（baseline 88），余量 ≤6，且这已是事后信息下的上界。", "old_string": "2. 信息上限：5 组可观察输入完全相同却对应不同真值（覆盖 30 条），其中一组三个模型的候选逐字相同、真值与是否回答都是 2:2；按“每个可观察组只做一个动作”算，核实成功上限是 94/100，baseline 88。阈值类改动最多值 6 条，且需要事后信息。"}
+```
+
+### tool result (seq 1247)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\REPORT.md has been updated successfully.
+```
+
+### tool call edit (seq 1248)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "回归与反证：`run_adjusted` 在 baseline 策略下与官方 `run` 逐字段相同（放宽是最小的）；同键超时重试仍只 1 次 commit；若 `explicit` 本身错误，保留臂会执行错目标 1 次（人为场景，如实计代价）。\n\n为排除“没找够”，又试了 7 个变体：没有一个能在不增加高风险错误、成本 ≤0.004、明确低风险 P95 不升的前提下提高核实成功（`results/explored.json`）。\n\n| 变体 | 核实成功 | 高风险错误 | 明确低风险 P95 | 平均成本 | 结论 |\n|---|---:|---:|---:|---:|---|\n| 全部 small | 83 | 0 | 1280 | 0.001 | 澄清更多，更差 |\n| 全部 standard | 86 | 0 | 930 | 0.003 | 更差 |\n| 全部 strong | 89 | 0 | 1280 | 0.009 | 完成 +1，成本超 0.004、P95 变差 |\n| 阈值 0.6 / 0.0 | 88 | 0 | 930 | 0.00314 | 澄清 −12，但错目标 2→5 |\n| 阈值 0.9 / 0.8 | 86 | 0 | 930 | 0.00314 | 错目标 0，但零动作 10→14 |\n| 明确→strong | 89 | 0 | 1280 | 0.00614 | 同“全部 strong”，被拒 |\n| 高风险直接执行 | 85 | 3 | 930 | 0.00314 | 撤回 |", "old_string": "回归与反证：`run_adjusted` 在 baseline 策略下与官方 `run` 逐字段相同（放宽是最小的）；同键超时重试仍只 1 次 commit；若 `explicit` 本身错误，保留臂会执行错目标 1 次（人为场景，如实计代价）。"}
+```
+
+### tool result (seq 1249)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\REPORT.md has been updated successfully.
+```
+
+### tool call edit (seq 1250)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "**原契约内本轮没有可保留的策略改动（增量 0）**：唯一的等价修法“明确→strong”因成本 0.00614 超过 0.004、该组 P95 升到 1280 被拒绝；放开高风险直接执行因核实降到 85 且新增 3 次高风险错误目标被撤回。保留的修复只在最小边界放宽下成立：明确目标优先于候选列表。继续观察：10 次零动作在当前可观察输入下不可区分，保留澄清。", "old_string": "保留：明确目标优先于候选列表。拒绝：明确→strong（多 1 条完成，但成本 0.00614 超过 0.004、该组 P95 升到 1280）。撤回：放开高风险直接执行（核实降到 85，并新增 3 次高风险错误目标）。继续观察：10 次零动作在当前可观察输入下不可区分，保留澄清。"}
+```
+
+### tool result (seq 1251)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\REPORT.md has been updated successfully.
+```
+
+## assistant (seq 1255)
+
+[reasoning]
+Now update REPORT's evidence table to include explored.json and fix test counts/event count. Read lines 33-55 again after edits to adjust:
+- table row "五臂对照" → maybe add "探索过的邻域 | results/explored.json | 7 个变体..."
+- "Ran 52 tests" → will be 59 (6 + 59). Let me confirm count later; candidate tests: 15+8+12+11+5+7 = 58? Let me recount: metrics 15, explicit 8, regression 12, boundary 11, review 5, explored 7 = 58. Earlier candidate run was 52 (15+8+12+11+5=51? hmm). Let me just run and see; then set the number.
+
+Let me add the explored row to the evidence table and change "902 事件" to generic.
+
+Then run full pipeline, count tests, update numbers, count CJK, fix README/EVAL_PLAN.
+
+Edit table row: after 历史日志审计 row add:
+| 探索过的邻域 | `evals/candidate/results/explored.json` | 7 个未采用变体的核实成功/高风险错误/成本/P95，`pareto_improvement_found=false` |
+
+And AI row: replace "902 事件（含工具调用）与关键消息位置" with "完整事件流（含工具调用）与关键消息位置".
+
+Then REPRO step 1: "Ran 6 tests OK、Ran 52 tests OK" → update after run.
+
+Let me do these edits now (number placeholder updated after run).
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "| 历史日志审计 | `evals/candidate/results/history_audit.json` | 9 条零动作、39 次澄清、无 world 的核实缺口 |\n| 探索过的邻域 | `evals/candidate/results/explored.json` | 7 个未采用变体的核实成功/高风险错误/成本/P95，`pareto_improvement_found=false` |\n| 自建场景与 oracle | `evals/candidate/scenarios/new_instances.jsonl`、`scenarios/README.md` | 12 条，逐条写明 world 依据 |\n| AI 记录 | `ai-sessions/cth01-session-01.jsonl`、`ai-sessions/INDEX.md` | 完整事件流（含工具调用）与关键消息位置 |", "old_string": "| 历史日志审计 | `evals/candidate/results/history_audit.json` | 9 条零动作、39 次澄清、无 world 的核实缺口 |\n| 自建场景与 oracle | `evals/candidate/scenarios/new_instances.jsonl`、`scenarios/README.md` | 12 条，逐条写明 world 依据 |\n| AI 记录 | `ai-sessions/cth01-session-01.jsonl`、`ai-sessions/INDEX.md` | 902 事件（含工具调用）与关键消息位置 |"}
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "1. 跑全流程：`evals\\candidate\\run.cmd`，应得到 `Ran 6 tests OK`、`Ran 58 tests OK` 与五臂表。", "old_string": "1. 跑全流程：`evals\\candidate\\run.cmd`，应得到 `Ran 6 tests OK`、`Ran 52 tests OK` 与五臂表。"}
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "5. 看反证：`review.py summary runs/legacy-counterexample/traces.jsonl` 应显示旧口径 100/100、核实 81/100、高风险错误 9。\n6. 看“试过什么”：`results/explored.json` 的 `pareto_improvement_found` 应为 `false`。", "old_string": "5. 看反证：`review.py summary runs/legacy-counterexample/traces.jsonl` 应显示旧口径 100/100、核实 81/100、高风险错误 9。"}
+
+### tool call edit (seq 1256)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "| 历史日志审计 | `evals/candidate/results/history_audit.json` | 9 条零动作、39 次澄清、无 world 的核实缺口 |\n| 探索过的邻域 | `evals/candidate/results/explored.json` | 7 个未采用变体的核实成功/高风险错误/成本/P95，`pareto_improvement_found=false` |\n| 自建场景与 oracle | `evals/candidate/scenarios/new_instances.jsonl`、`scenarios/README.md` | 12 条，逐条写明 world 依据 |\n| AI 记录 | `ai-sessions/cth01-session-01.jsonl`、`ai-sessions/INDEX.md` | 完整事件流（含工具调用）与关键消息位置 |", "old_string": "| 历史日志审计 | `evals/candidate/results/history_audit.json` | 9 条零动作、39 次澄清、无 world 的核实缺口 |\n| 自建场景与 oracle | `evals/candidate/scenarios/new_instances.jsonl`、`scenarios/README.md` | 12 条，逐条写明 world 依据 |\n| AI 记录 | `ai-sessions/cth01-session-01.jsonl`、`ai-sessions/INDEX.md` | 902 事件（含工具调用）与关键消息位置 |"}
+```
+
+### tool result (seq 1257)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\REPORT.md has been updated successfully.
+```
+
+### tool call edit (seq 1258)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "1. 跑全流程：`evals\\candidate\\run.cmd`，应得到 `Ran 6 tests OK`、`Ran 58 tests OK` 与五臂表。", "old_string": "1. 跑全流程：`evals\\candidate\\run.cmd`，应得到 `Ran 6 tests OK`、`Ran 52 tests OK` 与五臂表。"}
+```
+
+### tool result (seq 1259)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\REPORT.md has been updated successfully.
+```
+
+### tool call edit (seq 1260)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "5. 看反证：`review.py summary runs/legacy-counterexample/traces.jsonl` 应显示旧口径 100/100、核实 81/100、高风险错误 9。\n6. 看“试过什么”：`results/explored.json` 的 `pareto_improvement_found` 应为 `false`。", "old_string": "5. 看反证：`review.py summary runs/legacy-counterexample/traces.jsonl` 应显示旧口径 100/100、核实 81/100、高风险错误 9。"}
+```
+
+### tool result (seq 1261)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\REPORT.md has been updated successfully.
+```
+
+## assistant (seq 1265)
+
+[reasoning]
+Now EVAL_PLAN amendment (6). Read tail of EVAL_PLAN to append after (5). I read it earlier; the 后续调整 section ends with (5). Let me append (6) and (7) maybe:
+(6) explored neighborhood artifact + test.
+(7) REPORT wording tightened (ceiling bound, 原契约内增量=0). Combine into one amendment to keep tidy; but amendments should record adjustments; I'll add (6) for explored and (7) for wording.
+
+Then README updates.
+
+Then run full pipeline: tests count (expect 58? compute: 15+8+12+11+5+7 = 58). Let me verify by running.
+
+Then CJK count; adjust if >1200.
+
+Let me edit EVAL_PLAN.
+[tool call] read {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\EVAL_PLAN.md", "limit": 20, "offset": 36}
+
+### tool call read (seq 1266)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\EVAL_PLAN.md", "limit": 20, "offset": 36}
+```
+
+### tool result (seq 1267)
+
+```
+<path>C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\EVAL_PLAN.md</path>
+<type>file</type>
+<content>
+36: - 正常回归：公开 100 条上保留臂高风险错误目标 = 0、重复非幂等 = 0、`retry_key` 行为不变；官方 runner 与放宽 runner 在 baseline 策略下结果完全一致（放宽是最小的）。
+37: - 边界/代价：busy 澄清 1200ms、超时 500(+80)、before_commit/after_commit 各只 commit 一次；明确目标缺于候选但超时的组合；无 interaction_mode 按 normal。
+38: - 可能推翻主张的检验：(a) 若存在旧口径更低但核实更高的策略，主张 A 的“旧口径误导”要重写；(b) 若保留臂在公开或自建场景出现 1 次高风险错误目标，撤回该臂；(c) 若放宽臂在“explicit 本身错误”的人为场景上产生错目标，如实计为该假设的代价，不写成收益。
+39:
+40: ### 何种结果支持保留、撤回或继续观察
+41: - 保留：主张 A/B/C 在复跑中数字不变；主张 D 的放宽臂核实成功 > baseline 且高风险错误目标 = 0、重复非幂等 = 0、成本不升。
+42: - 撤回：放宽臂出现任何高风险错误目标；或明细与上表不符且无法解释。
+43: - 继续观察：explicit 权威性无现实证据；10 次零动作在当前可观察信号下无法区分（保留澄清）。
+44:
+45: ### 后续调整：新证据、方向变化及原目标完成状态（追加）
+46: （实现过程中追加；初始计划不改写。）
+47:
+48: - (1) 计数更正：主张 B 里"10 条"来自我最初临时脚本的统计错误（把 `(key, list)` 元组的长度当成组内场景数，5 组 ×2=10）。用 `metrics.identical_input_groups()` 复算后是 **5 组 / 30 条**（8+9+5+4+4），`test_boundary_and_cost.InformationLimit` 已按 30 断言。主张 B 的方向不变，且"同输入不同真值"的覆盖面比原来更大。
+49: - (2) 反例臂口径固定：`always-execute-top` 改为固定 standard 路由，使"旧看板 100/100 / 核实 81/100 / 高风险错误 9"与同口径对照可比（若沿用 baseline 路由，核实是 78/100，仍支持同一结论）。测试已按固定口径断言。
+50: - (3) 保留方案落点：明确指令的修复需要"允许以 explicit_target 执行"这一最小边界放宽，因此写成独立入口 `boundary.run_adjusted` + `arms.TrustExplicit`，未改动 `voice_agent/policy.py`；原契约结果同时保留（`baseline` 与 `after-contract-strong` 两行），收益不当作原条件下的产品改善。
+51: - (4) 原目标完成状态：主张 A/B/C/D 全部实际验证完成；主张 D 的收益比预期小（+1 条完成），但代价为零（成本不变、高风险错误 0、重复 0、明确低风险 P95 830 已到下界）。撤回臂与拒绝臂均按计划保留。
+52: - (5) 未完成/未验证：explicit 在真实使用中是否会过期没有证据（只用人为场景量化了代价）；10 次零动作在当前可观察输入下无法区分，保留澄清；P95 600ms 目标仍不可达（830 为下界）。
+
+(End of file - total 52 lines)
+</content>
+```
+
+## assistant (seq 1271)
+
+[reasoning]
+
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\EVAL_PLAN.md", "new_string": "- (5) 未完成/未验证：explicit 在真实使用中是否会过期没有证据（只用人为场景量化了代价）；10 次零动作在当前可观察输入下无法区分，保留澄清；P95 600ms 目标仍不可达（830 为下界）。\n- (6) 补\"探索过的邻域\"（提交 v1.0 之后追加）：把早期试过但未采用的 7 个变体（all-small / all-standard / all-strong / 阈值 0.6 / 阈值 0.9 / 明确→strong / 高风险直接执行）落盘为 `results/explored.json`，并加 `test_explored.py` 断言\"没有一个变体能在不增加高风险错误与重复、成本 ≤0.004、明确低风险 P95 不升的前提下提高核实成功\"。目的：把\"改进很小\"从推测变成可核对的事实，而不是事后叙事；判定标准写在 JSON 的 `criteria` 字段里。\n- (7) 表述收紧（同上）： REPORT 把\"阈值类改动最多值 6 条\"改为\"任何确定性单动作策略的上限 94/100\"，并明确写出\"**原契约内本轮增量 = 0**，保留的修复只在最小边界放宽下成立\"。这是对主张边界的修正，不改变任何数字。", "old_string": "- (5) 未完成/未验证：explicit 在真实使用中是否会过期没有证据（只用人为场景量化了代价）；10 次零动作在当前可观察输入下无法区分，保留澄清；P95 600ms 目标仍不可达（830 为下界）。"}
+
+### tool call edit (seq 1272)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\EVAL_PLAN.md", "new_string": "- (5) 未完成/未验证：explicit 在真实使用中是否会过期没有证据（只用人为场景量化了代价）；10 次零动作在当前可观察输入下无法区分，保留澄清；P95 600ms 目标仍不可达（830 为下界）。\n- (6) 补\"探索过的邻域\"（提交 v1.0 之后追加）：把早期试过但未采用的 7 个变体（all-small / all-standard / all-strong / 阈值 0.6 / 阈值 0.9 / 明确→strong / 高风险直接执行）落盘为 `results/explored.json`，并加 `test_explored.py` 断言\"没有一个变体能在不增加高风险错误与重复、成本 ≤0.004、明确低风险 P95 不升的前提下提高核实成功\"。目的：把\"改进很小\"从推测变成可核对的事实，而不是事后叙事；判定标准写在 JSON 的 `criteria` 字段里。\n- (7) 表述收紧（同上）： REPORT 把\"阈值类改动最多值 6 条\"改为\"任何确定性单动作策略的上限 94/100\"，并明确写出\"**原契约内本轮增量 = 0**，保留的修复只在最小边界放宽下成立\"。这是对主张边界的修正，不改变任何数字。", "old_string": "- (5) 未完成/未验证：explicit 在真实使用中是否会过期没有证据（只用人为场景量化了代价）；10 次零动作在当前可观察输入下无法区分，保留澄清；P95 600ms 目标仍不可达（830 为下界）。"}
+```
+
+### tool result (seq 1273)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\EVAL_PLAN.md has been updated successfully.
+```
+
+## assistant (seq 1277)
+
+[reasoning]
+Now update `evals/candidate/README.md`:
+- files table: arms.py description mentions variants? Add row for `test_explored.py`; add `results/explored.json` to 结果文件.
+- 人工复核: add step 6 about explored.
+- Maybe mention run.cmd unchanged (it doesn't call explored; audit does).
+
+Edits:
+1. In table after `test_review.py` row add `test_explored.py`.
+2. In 结果文件 list add explored.json line.
+3. In 人工复核 expected-output table add a row for explored? The 复核 list has 4 commands; add a note.
+
+Let me read relevant README sections (I know them). Edit precisely by strings I wrote.
+
+Table row currently ends with:
+`| test_review.py | 复核工具的差异判定（只看核实结果/提交/时延）与零动作过滤 |`
+Add after:
+`| test_explored.py | 探索过的 7 个变体：数字固定 + 没有 Pareto 改进的断言 |`
+
+结果文件 list ends with:
+`- evals/candidate/results/changed_scenes.md：before→after 的逐条变化（由下面的 diff 生成）`
+Add:
+`- evals/candidate/results/explored.json：7 个未采用变体与“是否存在 Pareto 改进”的判定（`pareto_improvement_found=false`）`
+
+人工复核 section: after step 4 (scene) add step 5 for explored? The section lists 4 commands with comments. Add a 5th command:
+```
+# 5) 看“试过什么”：7 个变体，判定为没有 Pareto 改进
+uv run --quiet --offline --no-project python -c "import json;d=json.load(open('evals/candidate/results/explored.json',encoding='utf-8'));print(d['pareto_improvement_found']);[print(v['key'],v['verified_task_success']['numerator'],v['high_risk_wrong_target'],v['mean_model_cost_usd'],v['p95_explicit_low_ms']) for v in d['variants']]"
+```
+Hmm, long inline; acceptable (commands not counted in REPORT but this is README). Alternatively add a `review.py explored` subcommand — cleaner! Should I add? review.py already handles summary/zero-action/diff/scene; adding `explored` that reads explored.json and prints a table is 15 lines. That's nicer for human review than a one-liner. And it's within scope (review tool). But then review.py reads a results file (not runs/) — fine, still read-only.
+
+Given "优化 P1" and README's "一条命令" ethos, I'll add `review.py explored` that:
+- reads `results/explored.json` (path relative to HERE), prints ASCII table + verdict.
+- `--json` prints raw.
+Then README step: `review.py explored` expected: `pareto_improvement_found=False`, 7 rows.
+
+Also update test_review? Not needed (function trivial), but coverage... skip; test_explored covers the data claims.
+
+Implement review.py explored subcommand. Need to read review.py main section to edit. I read earlier parts; let me read 180-260.
+[tool call] read {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "limit": 70, "offset": 186}
+
+### tool call read (seq 1278)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "limit": 70, "offset": 186}
+```
+
+### tool result (seq 1279)
+
+```
+<path>C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\review.py</path>
+<type>file</type>
+<content>
+186:     p_summary = sub.add_parser("summary", help="核实口径汇总")
+187:     p_summary.add_argument("traces")
+188:     p_summary.add_argument("--json", action="store_true")
+189:
+190:     p_zero = sub.add_parser("zero-action", help="列出零动作场景")
+191:     p_zero.add_argument("traces")
+192:     p_zero.add_argument("--json", action="store_true")
+193:
+194:     p_diff = sub.add_parser("diff", help="比较两份 traces")
+195:     p_diff.add_argument("before")
+196:     p_diff.add_argument("after")
+197:     p_diff.add_argument("--md", default=str(DEFAULT_MD))
+198:     p_diff.add_argument("--json", action="store_true")
+199:
+200:     p_scene = sub.add_parser("scene", help="打印单个场景的输入与事件")
+201:     p_scene.add_argument("scene_id")
+202:     p_scene.add_argument("--traces", nargs="+", default=[str(ROOT / "runs" / "before" / "traces.jsonl")])
+203:
+204:     args = parser.parse_args()
+205:
+206:     if args.command == "summary":
+207:         pairs = load_pairs(args.scenarios, args.traces)
+208:         summary = summary_row(pairs)
+209:         if args.json:
+210:             print(json.dumps(summary, ensure_ascii=False, indent=1, sort_keys=True))
+211:         else:
+212:             print_summary(args.traces, summary)
+213:         return 0
+214:
+215:     if args.command == "zero-action":
+216:         pairs = load_pairs(args.scenarios, args.traces)
+217:         rows = zero_action_rows(pairs)
+218:         if args.json:
+219:             print(json.dumps(rows, ensure_ascii=False, indent=1))
+220:         else:
+221:             print("zero-action: %d" % len(rows))
+222:             for row in rows:
+223:                 print("%s | %s | risk=%s | explicit=%s | mode=%s | %sms | clarified=%s" % (
+224:                     row["id"], row["text"], row["risk"], row["explicit"] or "-",
+225:                     row["mode"], row["latency_ms"], row["clarified"]))
+226:         return 0
+227:
+228:     if args.command == "diff":
+229:         before = load_pairs(args.scenarios, args.before)
+230:         after = load_pairs(args.scenarios, args.after)
+231:         rows = changed_rows(before, after)
+232:         print_changed(rows)
+233:         Path(args.md).parent.mkdir(parents=True, exist_ok=True)
+234:         Path(args.md).write_text(changed_markdown(rows), encoding="utf-8", newline="\n")
+235:         print("wrote %s" % args.md)
+236:         if args.json:
+237:             print(json.dumps(rows, ensure_ascii=False, indent=1))
+238:         return 0
+239:
+240:     for traces in args.traces:
+241:         print("=== %s ===" % traces)
+242:         print_scene(load_pairs(args.scenarios, traces), args.scene_id)
+243:     return 0
+244:
+245:
+246: if __name__ == "__main__":
+247:     sys.exit(main())
+
+(End of file - total 247 lines)
+</content>
+```
+
+## assistant (seq 1283)
+
+[reasoning]
+Add `explored` subcommand to review.py:
+- `DEFAULT_EXPLORED = HERE / "results" / "explored.json"`.
+- parser: `p_explored = sub.add_parser("explored", help="打印探索过的变体与判定")`; `add_argument("--path", default=str(DEFAULT_EXPLORED))`; `--json`.
+- Handler:
+```python
+    if args.command == "explored":
+        data = json.loads(Path(args.path).read_text(encoding="utf-8"))
+        if args.json:
+            print(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True))
+            return 0
+        base = data["baseline"]
+        print("baseline: verified=%d/%d high_risk_wrong=%d p95_explicit_low=%s cost=%.5f" % (...))
+        print("criteria: " + data["criteria"])
+        print("key | verified | zero | wrong | high_risk_wrong | clarified | p95 | p95_explicit_low | cost | dominates")
+        for v in data["variants"]:
+            print(...)
+        print("pareto_improvement_found=%s" % data["pareto_improvement_found"])
+        return 0
+```
+Place before the final scene loop, and add parser before `args = parser.parse_args()`.
+
+Also note `data["baseline"]["verified_task_success"]` etc.
+
+Let me write the edit.
+
+Then README updates, then run pipeline, count, fix, stage/commit.
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "new_string": "    p_scene = sub.add_parser(\"scene\", help=\"打印单个场景的输入与事件\")\n    p_scene.add_argument(\"scene_id\")\n    p_scene.add_argument(\"--traces\", nargs=\"+\", default=[str(ROOT / \"runs\" / \"before\" / \"traces.jsonl\")])\n\n    p_explored = sub.add_parser(\"explored\", help=\"打印试过但未采用的变体与判定\")\n    p_explored.add_argument(\"--path\", default=str(DEFAULT_EXPLORED))\n    p_explored.add_argument(\"--json\", action=\"store_true\")\n\n    args = parser.parse_args()", "old_string": "    p_scene = sub.add_parser(\"scene\", help=\"打印单个场景的输入与事件\")\n    p_scene.add_argument(\"scene_id\")\n    p_scene.add_argument(\"--traces\", nargs=\"+\", default=[str(ROOT / \"runs\" / \"before\" / \"traces.jsonl\")])\n\n    args = parser.parse_args()"}
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "new_string": "    if args.command == \"explored\":\n        data = json.loads(Path(args.path).read_text(encoding=\"utf-8\"))\n        if args.json:\n            print(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True))\n            return 0\n        base = data[\"baseline\"]\n        print(\"baseline: verified=%d/%d high_risk_wrong=%d p95_explicit_low=%sms cost=%.5f\" % (\n            base[\"verified_task_success\"][\"numerator\"],\n            base[\"verified_task_success\"][\"denominator\"],\n            base[\"high_risk_wrong_target\"], base[\"p95_explicit_low_ms\"],\n            base[\"mean_model_cost_usd\"]))\n        print(\"criteria: \" + data[\"criteria\"])\n        print(\"key | verified | zero | wrong | high_risk_wrong | clarified | p95 | p95_EL | cost | dominates\")\n        for variant in data[\"variants\"]:\n            print(\"%s | %d/%d | %d | %d | %d | %d | %d | %s | %.5f | %s\" % (\n                variant[\"key\"],\n                variant[\"verified_task_success\"][\"numerator\"],\n                variant[\"verified_task_success\"][\"denominator\"],\n                variant[\"zero_action\"], variant[\"wrong_target\"],\n                variant[\"high_risk_wrong_target\"], variant[\"clarified\"],\n                variant[\"p95_latency_ms\"], variant[\"p95_explicit_low_ms\"],\n                variant[\"mean_model_cost_usd\"], variant[\"dominates_baseline\"]))\n        print(\"pareto_improvement_found=%s\" % data[\"pareto_improvement_found\"])\n        return 0\n\n    for traces in args.traces:", "old_string": "    for traces in args.traces:"}
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "new_string": "DEFAULT_SCENARIOS = ROOT / \"data\" / \"public_scenarios.jsonl\"\nDEFAULT_MD = HERE / \"results\" / \"changed_scenes.md\"\nDEFAULT_EXPLORED = HERE / \"results\" / \"explored.json\"", "old_string": "DEFAULT_SCENARIOS = ROOT / \"data\" / \"public_scenarios.jsonl\"\nDEFAULT_MD = HERE / \"results\" / \"changed_scenes.md\""}
+
+### tool call edit (seq 1284)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "new_string": "    p_scene = sub.add_parser(\"scene\", help=\"打印单个场景的输入与事件\")\n    p_scene.add_argument(\"scene_id\")\n    p_scene.add_argument(\"--traces\", nargs=\"+\", default=[str(ROOT / \"runs\" / \"before\" / \"traces.jsonl\")])\n\n    p_explored = sub.add_parser(\"explored\", help=\"打印试过但未采用的变体与判定\")\n    p_explored.add_argument(\"--path\", default=str(DEFAULT_EXPLORED))\n    p_explored.add_argument(\"--json\", action=\"store_true\")\n\n    args = parser.parse_args()", "old_string": "    p_scene = sub.add_parser(\"scene\", help=\"打印单个场景的输入与事件\")\n    p_scene.add_argument(\"scene_id\")\n    p_scene.add_argument(\"--traces\", nargs=\"+\", default=[str(ROOT / \"runs\" / \"before\" / \"traces.jsonl\")])\n\n    args = parser.parse_args()"}
+```
+
+### tool result (seq 1285)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\review.py has been updated successfully.
+```
+
+### tool call edit (seq 1286)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "new_string": "    if args.command == \"explored\":\n        data = json.loads(Path(args.path).read_text(encoding=\"utf-8\"))\n        if args.json:\n            print(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True))\n            return 0\n        base = data[\"baseline\"]\n        print(\"baseline: verified=%d/%d high_risk_wrong=%d p95_explicit_low=%sms cost=%.5f\" % (\n            base[\"verified_task_success\"][\"numerator\"],\n            base[\"verified_task_success\"][\"denominator\"],\n            base[\"high_risk_wrong_target\"], base[\"p95_explicit_low_ms\"],\n            base[\"mean_model_cost_usd\"]))\n        print(\"criteria: \" + data[\"criteria\"])\n        print(\"key | verified | zero | wrong | high_risk_wrong | clarified | p95 | p95_EL | cost | dominates\")\n        for variant in data[\"variants\"]:\n            print(\"%s | %d/%d | %d | %d | %d | %d | %d | %s | %.5f | %s\" % (\n                variant[\"key\"],\n                variant[\"verified_task_success\"][\"numerator\"],\n                variant[\"verified_task_success\"][\"denominator\"],\n                variant[\"zero_action\"], variant[\"wrong_target\"],\n                variant[\"high_risk_wrong_target\"], variant[\"clarified\"],\n                variant[\"p95_latency_ms\"], variant[\"p95_explicit_low_ms\"],\n                variant[\"mean_model_cost_usd\"], variant[\"dominates_baseline\"]))\n        print(\"pareto_improvement_found=%s\" % data[\"pareto_improvement_found\"])\n        return 0\n\n    for traces in args.traces:", "old_string": "    for traces in args.traces:"}
+```
+
+### tool result (seq 1287)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\review.py has been updated successfully.
+```
+
+### tool call edit (seq 1288)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "new_string": "DEFAULT_SCENARIOS = ROOT / \"data\" / \"public_scenarios.jsonl\"\nDEFAULT_MD = HERE / \"results\" / \"changed_scenes.md\"\nDEFAULT_EXPLORED = HERE / \"results\" / \"explored.json\"", "old_string": "DEFAULT_SCENARIOS = ROOT / \"data\" / \"public_scenarios.jsonl\"\nDEFAULT_MD = HERE / \"results\" / \"changed_scenes.md\""}
+```
+
+### tool result (seq 1289)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\review.py has been updated successfully.
+```
+
+## assistant (seq 1293)
+
+[reasoning]
+Also update review.py docstring usage list to mention `explored`. Let me read top lines and edit.
+
+Then README edits.
+
+Then run pipeline.
+[tool call] read {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "limit": 16}
+
+### tool call read (seq 1294)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "limit": 16}
+```
+
+### tool result (seq 1295)
+
+```
+<path>C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\review.py</path>
+<type>file</type>
+<content>
+1: """人工复核入口：把 runs/*/traces.jsonl 变成可读、可核对的差异与统计。
+2:
+3: 它不是评测本身，而是给"人工检查"用的：一条命令看清改动改了什么、为什么改、
+4: 哪些场景变了。默认只读，不写 runs/。
+5:
+6: 用法（项目根目录，zh-CN Windows 先设 PYTHONUTF8=1）：
+7:
+8:     python evals/candidate/review.py summary runs/before/traces.jsonl
+9:     python evals/candidate/review.py zero-action runs/before/traces.jsonl
+10:     python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl
+11:     python evals/candidate/review.py scene s-fca8479a13a9246b
+12:
+13: `diff` 默认同时写一份中文 Markdown 到 `evals/candidate/results/changed_scenes.md`。
+14:
+15: （文件名不叫 inspect.py：脚本目录会进入 sys.path，那样会遮蔽标准库 ``inspect``。）
+16: """
+
+(Showing lines 1-16 of 277. Use offset=17 to continue.)
+</content>
+```
+
+## assistant (seq 1299)
+
+[reasoning]
+
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "new_string": "    python evals/candidate/review.py summary runs/before/traces.jsonl\n    python evals/candidate/review.py zero-action runs/before/traces.jsonl\n    python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl\n    python evals/candidate/review.py scene s-fca8479a13a9246b\n    python evals/candidate/review.py explored\n\n`diff` 默认同时写一份中文 Markdown 到 `evals/candidate/results/changed_scenes.md`；\n`explored` 读取 `results/explored.json`（7 个试过但未采用的变体与“是否存在 Pareto 改进”）。", "old_string": "    python evals/candidate/review.py summary runs/before/traces.jsonl\n    python evals/candidate/review.py zero-action runs/before/traces.jsonl\n    python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl\n    python evals/candidate/review.py scene s-fca8479a13a9246b\n\n`diff` 默认同时写一份中文 Markdown 到 `evals/candidate/results/changed_scenes.md`。"}
+[tool call] read {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\README.md", "limit": 45, "offset": 44}
+
+### tool call edit (seq 1300)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\review.py", "new_string": "    python evals/candidate/review.py summary runs/before/traces.jsonl\n    python evals/candidate/review.py zero-action runs/before/traces.jsonl\n    python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl\n    python evals/candidate/review.py scene s-fca8479a13a9246b\n    python evals/candidate/review.py explored\n\n`diff` 默认同时写一份中文 Markdown 到 `evals/candidate/results/changed_scenes.md`；\n`explored` 读取 `results/explored.json`（7 个试过但未采用的变体与“是否存在 Pareto 改进”）。", "old_string": "    python evals/candidate/review.py summary runs/before/traces.jsonl\n    python evals/candidate/review.py zero-action runs/before/traces.jsonl\n    python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl\n    python evals/candidate/review.py scene s-fca8479a13a9246b\n\n`diff` 默认同时写一份中文 Markdown 到 `evals/candidate/results/changed_scenes.md`。"}
+```
+
+### tool result (seq 1301)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\review.py has been updated successfully.
+```
+
+### tool call read (seq 1302)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\README.md", "limit": 45, "offset": 44}
+```
+
+### tool result (seq 1303)
+
+```
+<path>C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\README.md</path>
+<type>file</type>
+<content>
+44: ```
+45:
+46: `audit.py` 只读取 `runs/before/traces.jsonl`（由上面的文档命令生成），不改写它的
+47: `summary.json`；重复运行输出字节相同。
+48:
+49: ## 结果文件
+50:
+51: - `runs/before/`：官方 CLI + baseline（`summary.json` 是旧看板原生格式）
+52: - `runs/before/verified_summary.json`：对同一份 traces 的核实口径
+53: - `runs/after/`：保留方案（`boundary.run_adjusted` + `TrustExplicit`）
+54: - `runs/after-contract-strong/`：被拒绝的替代方案（原契约内，明确→strong）
+55: - `runs/withdraw-highrisk-execute/`：被撤回的实验（结果与命令保留）
+56: - `runs/legacy-counterexample/`：旧看板满分的反例
+57: - `evals/candidate/results/audit.json`、`arms.md`、`history_audit.json`
+58: - `evals/candidate/results/changed_scenes.md`：before→after 的逐条变化（由下面的 `diff` 生成）
+59:
+60: ## 人工复核（四条命令，全部只读 runs/）
+61:
+62: ```sh
+63: # 1) 两个口径各说一遍：旧看板 vs 核实（预期 before: legacy 90/100、verified 88/100）
+64: uv run --quiet --offline --no-project python evals/candidate/review.py summary runs/before/traces.jsonl
+65: uv run --quiet --offline --no-project python evals/candidate/review.py summary runs/after/traces.jsonl
+66: # 2) 零动作场景明细（预期 10 条，其中最后一条 explicit=hall_light 会在 after 消失）
+67: uv run --quiet --offline --no-project python evals/candidate/review.py zero-action runs/before/traces.jsonl
+68: # 3) 改动到底改了哪几条（预期 changed scenes: 5，含 1 条 no_commit→ok）
+69: uv run --quiet --offline --no-project python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl
+70: # 4) 看单条场景的完整事件流（含模型选择、澄清、提交、时延）
+71: uv run --quiet --offline --no-project python evals/candidate/review.py scene s-fca8479a13a9246b
+72: ```
+73:
+74: 预期输出（可直接核对）：
+75:
+76: | 命令 | 关键行 |
+77: |---|---|
+78: | `summary before` | `verified=88/100 zero_action=10 wrong_target=2 high_risk_wrong=0 clarified=43 unanswered=10 p95=1380` |
+79: | `summary after` | `verified=89/100 zero_action=9 wrong_target=2 high_risk_wrong=0 clarified=38 unanswered=9 p95=1380` |
+80: | `zero-action before` | `zero-action: 10` |
+81: | `diff` | `changed scenes: 5`，其中 `s-fca8479a13a9246b ... no_commit,clarify,1450ms -> ok,execute,830ms` |
+82:
+83: `review.py` 不改写 `runs/`；`diff` 会重写 `results/changed_scenes.md`（内容确定）。
+84:
+85: ## 已知限制
+86:
+87: - 100 条公开场景是合成数据，所有结论只在当前模拟范围内成立；定向反例不用于估计线上比例。
+88: - `data/history_sessions.jsonl` 没有 world，只能核实"是否发生动作"，无法核实目标对错。
+
+(Showing lines 44-88 of 92. Use offset=89 to continue.)
+</content>
+```
+
+## assistant (seq 1307)
+
+[reasoning]
+
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\README.md", "new_string": "- `evals/candidate/results/audit.json`、`arms.md`、`history_audit.json`\n- `evals/candidate/results/changed_scenes.md`：before→after 的逐条变化（由下面的 `diff` 生成）\n- `evals/candidate/results/explored.json`：7 个试过但未采用的变体，判定为没有 Pareto 改进\n\n## 人工复核（五条命令，全部只读）\n\n```sh\n# 1) 两个口径各说一遍：旧看板 vs 核实（预期 before: legacy 90/100、verified 88/100）\nuv run --quiet --offline --no-project python evals/candidate/review.py summary runs/before/traces.jsonl\nuv run --quiet --offline --no-project python evals/candidate/review.py summary runs/after/traces.jsonl\n# 2) 零动作场景明细（预期 10 条，其中最后一条 explicit=hall_light 会在 after 消失）\nuv run --quiet --offline --no-project python evals/candidate/review.py zero-action runs/before/traces.jsonl\n# 3) 改动到底改了哪几条（预期 changed scenes: 5，含 1 条 no_commit→ok）\nuv run --quiet --offline --no-project python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl\n# 4) 看单条场景的完整事件流（含模型选择、澄清、提交、时延）\nuv run --quiet --offline --no-project python evals/candidate/review.py scene s-fca8479a13a9246b\n# 5) 看\"试过什么\"（预期 7 个变体，pareto_improvement_found=False）\nuv run --quiet --offline --no-project python evals/candidate/review.py explored\n```", "old_string": "- `evals/candidate/results/audit.json`、`arms.md`、`history_audit.json`\n- `evals/candidate/results/changed_scenes.md`：before→after 的逐条变化（由下面的 `diff` 生成）\n\n## 人工复核（四条命令，全部只读 runs/）\n\n```sh\n# 1) 两个口径各说一遍：旧看板 vs 核实（预期 before: legacy 90/100、verified 88/100）\nuv run --quiet --offline --no-project python evals/candidate/review.py summary runs/before/traces.jsonl\nuv run --quiet --offline --no-project python evals/candidate/review.py summary runs/after/traces.jsonl\n# 2) 零动作场景明细（预期 10 条，其中最后一条 explicit=hall_light 会在 after 消失）\nuv run --quiet --offline --no-project python evals/candidate/review.py zero-action runs/before/traces.jsonl\n# 3) 改动到底改了哪几条（预期 changed scenes: 5，含 1 条 no_commit→ok）\nuv run --quiet --offline --no-project python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl\n# 4) 看单条场景的完整事件流（含模型选择、澄清、提交、时延）\nuv run --quiet --offline --no-project python evals/candidate/review.py scene s-fca8479a13a9246b\n```"}
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\README.md", "new_string": "| `zero-action before` | `zero-action: 10` |\n| `diff` | `changed scenes: 5`，其中 `s-fca8479a13a9246b ... no_commit,clarify,1450ms -> ok,execute,830ms` |\n| `explored` | `pareto_improvement_found=False`，7 行变体", "old_string": "| `zero-action before` | `zero-action: 10` |\n| `diff` | `changed scenes: 5`，其中 `s-fca8479a13a9246b ... no_commit,clarify,1450ms -> ok,execute,830ms` |"}
+
+### tool call edit (seq 1308)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\README.md", "new_string": "- `evals/candidate/results/audit.json`、`arms.md`、`history_audit.json`\n- `evals/candidate/results/changed_scenes.md`：before→after 的逐条变化（由下面的 `diff` 生成）\n- `evals/candidate/results/explored.json`：7 个试过但未采用的变体，判定为没有 Pareto 改进\n\n## 人工复核（五条命令，全部只读）\n\n```sh\n# 1) 两个口径各说一遍：旧看板 vs 核实（预期 before: legacy 90/100、verified 88/100）\nuv run --quiet --offline --no-project python evals/candidate/review.py summary runs/before/traces.jsonl\nuv run --quiet --offline --no-project python evals/candidate/review.py summary runs/after/traces.jsonl\n# 2) 零动作场景明细（预期 10 条，其中最后一条 explicit=hall_light 会在 after 消失）\nuv run --quiet --offline --no-project python evals/candidate/review.py zero-action runs/before/traces.jsonl\n# 3) 改动到底改了哪几条（预期 changed scenes: 5，含 1 条 no_commit→ok）\nuv run --quiet --offline --no-project python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl\n# 4) 看单条场景的完整事件流（含模型选择、澄清、提交、时延）\nuv run --quiet --offline --no-project python evals/candidate/review.py scene s-fca8479a13a9246b\n# 5) 看\"试过什么\"（预期 7 个变体，pareto_improvement_found=False）\nuv run --quiet --offline --no-project python evals/candidate/review.py explored\n```", "old_string": "- `evals/candidate/results/audit.json`、`arms.md`、`history_audit.json`\n- `evals/candidate/results/changed_scenes.md`：before→after 的逐条变化（由下面的 `diff` 生成）\n\n## 人工复核（四条命令，全部只读 runs/）\n\n```sh\n# 1) 两个口径各说一遍：旧看板 vs 核实（预期 before: legacy 90/100、verified 88/100）\nuv run --quiet --offline --no-project python evals/candidate/review.py summary runs/before/traces.jsonl\nuv run --quiet --offline --no-project python evals/candidate/review.py summary runs/after/traces.jsonl\n# 2) 零动作场景明细（预期 10 条，其中最后一条 explicit=hall_light 会在 after 消失）\nuv run --quiet --offline --no-project python evals/candidate/review.py zero-action runs/before/traces.jsonl\n# 3) 改动到底改了哪几条（预期 changed scenes: 5，含 1 条 no_commit→ok）\nuv run --quiet --offline --no-project python evals/candidate/review.py diff runs/before/traces.jsonl runs/after/traces.jsonl\n# 4) 看单条场景的完整事件流（含模型选择、澄清、提交、时延）\nuv run --quiet --offline --no-project python evals/candidate/review.py scene s-fca8479a13a9246b\n```"}
+```
+
+### tool result (seq 1309)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\README.md has been updated successfully.
+```
+
+### tool call edit (seq 1310)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\README.md", "new_string": "| `zero-action before` | `zero-action: 10` |\n| `diff` | `changed scenes: 5`，其中 `s-fca8479a13a9246b ... no_commit,clarify,1450ms -> ok,execute,830ms` |\n| `explored` | `pareto_improvement_found=False`，7 行变体", "old_string": "| `zero-action before` | `zero-action: 10` |\n| `diff` | `changed scenes: 5`，其中 `s-fca8479a13a9246b ... no_commit,clarify,1450ms -> ok,execute,830ms` |"}
+```
+
+### tool result (seq 1311)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\README.md has been updated successfully.
+```
+
+## assistant (seq 1315)
+
+[reasoning]
+Also add test_explored row to the README file table (I planned). Let me edit after test_review row.
+
+Then run full pipeline, check test count, count CJK, and adjust REPORT "Ran 58" if needed.
+
+Let me add the table row and then run.
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\README.md", "new_string": "| `test_review.py` | 复核工具的差异判定（只看核实结果/提交/时延）与零动作过滤 |\n| `test_explored.py` | 7 个探索变体的数字固定，并断言没有一个在 4 条约束下优于 baseline |", "old_string": "| `test_review.py` | 复核工具的差异判定（只看核实结果/提交/时延）与零动作过滤 |"}
+[tool call] pwsh {"command": "$env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\n$log = Join-Path $env:TEMP 'cth01-p1.log'\ncmd /c \"evals\\candidate\\run.cmd > `\"$log`\" 2>&1\"; Write-Output \"RUNCMD_EXIT=$LASTEXITCODE\"\nSelect-String -Path $log -Pattern \"Ran \\d+ tests|^OK|FAILED|changed scenes|explored:|ceiling=\" | ForEach-Object { $_.Line }\nWrite-Output '=== review explored ==='\n$env:PYTHONUTF8='1'\nuv run --quiet --offline --no-project python evals/candidate/review.py explored\nWrite-Output '=== report chars ==='\nuv run --quiet --offline --no-project python -c \"import re; t=open('REPORT.md',encoding='utf-8').read(); t='\\n'.join(l for l in t.splitlines() if not l.strip().startswith(('|','```'))); print('cjk', len(re.findall(r'[\\u4e00-\\u9fff]', t)))\"", "description": "Run full pipeline with explored artifact and check report length", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+
+### tool call edit (seq 1316)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\evals\\candidate\\README.md", "new_string": "| `test_review.py` | 复核工具的差异判定（只看核实结果/提交/时延）与零动作过滤 |\n| `test_explored.py` | 7 个探索变体的数字固定，并断言没有一个在 4 条约束下优于 baseline |", "old_string": "| `test_review.py` | 复核工具的差异判定（只看核实结果/提交/时延）与零动作过滤 |"}
+```
+
+### tool result (seq 1317)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\evals\candidate\README.md has been updated successfully.
+```
+
+### tool call pwsh (seq 1318)
+
+```json
+{"command": "$env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\n$log = Join-Path $env:TEMP 'cth01-p1.log'\ncmd /c \"evals\\candidate\\run.cmd > `\"$log`\" 2>&1\"; Write-Output \"RUNCMD_EXIT=$LASTEXITCODE\"\nSelect-String -Path $log -Pattern \"Ran \\d+ tests|^OK|FAILED|changed scenes|explored:|ceiling=\" | ForEach-Object { $_.Line }\nWrite-Output '=== review explored ==='\n$env:PYTHONUTF8='1'\nuv run --quiet --offline --no-project python evals/candidate/review.py explored\nWrite-Output '=== report chars ==='\nuv run --quiet --offline --no-project python -c \"import re; t=open('REPORT.md',encoding='utf-8').read(); t='\\n'.join(l for l in t.splitlines() if not l.strip().startswith(('|','```'))); print('cjk', len(re.findall(r'[\\u4e00-\\u9fff]', t)))\"", "description": "Run full pipeline with explored artifact and check report length", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+```
+
+### tool result (seq 1319)
+
+```
+RUNCMD_EXIT=0
+Ran 6 tests in 0.006s
+OK
+Ran 59 tests in 0.059s
+OK
+ceiling=94/100  identical_inputs(divergent_target groups)=5/30 scenes
+explored: 7 variants, pareto_improvement_found=False
+changed scenes: 5
+=== review explored ===
+baseline: verified=88/100 high_risk_wrong=0 p95_explicit_low=930ms cost=0.00314
+criteria: 优于 baseline 需同时满足：核实成功更高、高风险错误目标与重复非幂等不增加、平均成本 <= 0.004 USD、明确低风险 P95 不高于 baseline。
+key | verified | zero | wrong | high_risk_wrong | clarified | p95 | p95_EL | cost | dominates
+all-small | 83/100 | 14 | 3 | 0 | 57 | 1380 | 1280 | 0.00100 | False
+all-standard | 86/100 | 12 | 2 | 0 | 48 | 1530 | 930 | 0.00300 | False
+all-strong | 89/100 | 9 | 2 | 0 | 38 | 1980 | 1280 | 0.00900 | False
+threshold-0.6 | 88/100 | 7 | 5 | 0 | 31 | 1380 | 930 | 0.00314 | False
+threshold-0.9 | 86/100 | 14 | 0 | 0 | 55 | 1880 | 930 | 0.00314 | False
+explicit-to-strong | 89/100 | 9 | 2 | 0 | 38 | 1380 | 1280 | 0.00614 | False
+high-risk-execute | 85/100 | 10 | 5 | 3 | 37 | 1380 | 930 | 0.00314 | False
+pareto_improvement_found=False
+=== report chars ===
+cjk 1167
+
+```
+
+## assistant (seq 1323)
+
+[reasoning]
+- 6 + 59 tests pass (52 + 7 = 59 ✓).
+- explored works; report 1167 CJK (≤1200) ✓.
+- run.cmd exit 0.
+
+Need to fix REPORT's "Ran 58 tests OK" → 59. I wrote 58 earlier assuming 58. Update.
+
+Also check REPORT mention "五条命令"? I said in README "五条命令", REPORT says "人工复现（约 5 分钟...）" and lists 6 steps now. Fine.
+
+Also REPORT's 证据 table says explored exists ✓.
+
+Now also check: `review.py` changed_scenes.md writes; `audit.py` explored.json written; all staged later.
+
+Remaining:
+1. Fix REPORT "Ran 58" → 59.
+2. Re-export session (to include P1 work).
+3. Run renormalize/add; verify check 0, status, tests count.
+4. Commit (identity present) with message; push? They pushed v1.0 earlier; I'll commit and tell them to push (or push if SSH works). Let me try `git push` after commit? Risk: their SSH agent may require passphrase → failure; harmless (non-destructive). But pushing without consent? They asked to optimize P1; delivering a commit is natural, but pushing changes remote. They already pushed and might expect me to push the follow-up. Hmm. Safer: commit locally, report the commit, and say "push 命令：git push". I'll not push.
+
+Actually, "git我已经人工完成了" might mean they're handling all git ops. So commit is maybe also theirs? But leaving changes uncommitted contradicts "优化交付物". I'll commit (so the tree is clean and the improvement is captured) and explicitly tell them to run `git push` for the remote. If they'd rather amend v1.0, they can `git reset --soft HEAD~1` and recommit — I'll mention.
+
+Also should the commit amend v1.0 instead of a new commit? A follow-up commit is cleaner history and preserves what was pushed. Recommend follow-up.
+
+5. Ensure `results/explored.json` deterministic; and `git diff --check` 0 after renormalize.
+6. Also update `review.py` line: `print("key | ...")` — ASCII ✓.
+
+Also: EVAL_PLAN/README/REPORT mention "58 tests"? Only REPORT step 1. Fix to 59.
+
+Also README (evals/candidate) says "人工复核（五条命令）" ✓.
+
+One more: REPORT's 证据 table "五臂对照 | arms.md | 即上表" ✓, explored row added.
+
+Let me fix the test count, then re-export + verify + commit.
+
+Also double-check CJK after any small edits (fixing 58→59 doesn't change CJK count much).
+
+Additionally: the P1 item 3 said "explored.json（或 REPORT 一个附录表）" — done both.
+
+Potential issue: `test_explored.py` imports `audit`, and audit imports `boundary`, `arms`, `metrics` — fine. But `audit.EXPLORED` holds policy instances created at import (FixedModel("small") etc.) — stateless ✓.
+
+Another check: `audit.py` module-level `EXPLORED` references `arms` before import? Import order: `import arms` at top before ARMS/EXPLORED definitions ✓ (lines 20-30ish). Yes.
+
+Determinism: explored.json includes float costs; stable.
+
+Let me fix REPORT and re-export.
+[tool call] edit {"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "1. 跑全流程：`evals\\candidate\\run.cmd`，应得到 `Ran 6 tests OK`、`Ran 59 tests OK` 与五臂表。", "old_string": "1. 跑全流程：`evals\\candidate\\run.cmd`，应得到 `Ran 6 tests OK`、`Ran 58 tests OK` 与五臂表。"}
+[tool call] pwsh {"command": "$env:PYTHONUTF8='1'; $env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\nuv run --quiet --offline --no-project python ai-sessions/export_session.py > $null 2>&1; Write-Output \"EXPORT_EXIT=$LASTEXITCODE\"\ngit add -A\ngit add --renormalize .\ngit add -f runs/before runs/after runs/after-contract-strong runs/withdraw-highrisk-execute runs/legacy-counterexample 2>$null\n$chk = git diff --cached --check 2>&1\nWrite-Output \"check lines: $($chk.Count)\"\nWrite-Output '=== eol ==='\ngit ls-files --eol | ForEach-Object { ($_ -split '\\s+')[0] } | Group-Object | ForEach-Object { \"$($_.Name): $($_.Count)\" }\nWrite-Output '=== status ==='\ngit status --porcelain=v1\nWrite-Output '=== changed files summary ==='\ngit diff --cached --stat | Select-Object -Last 4", "description": "Re-export session, stage P1 changes, verify clean index", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+
+### tool call edit (seq 1324)
+
+```json
+{"file_path": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7\\REPORT.md", "new_string": "1. 跑全流程：`evals\\candidate\\run.cmd`，应得到 `Ran 6 tests OK`、`Ran 59 tests OK` 与五臂表。", "old_string": "1. 跑全流程：`evals\\candidate\\run.cmd`，应得到 `Ran 6 tests OK`、`Ran 58 tests OK` 与五臂表。"}
+```
+
+### tool result (seq 1325)
+
+```
+The file C:\Users\[REDACTED:USER]\Downloads\EdgeDownload\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\C-TH-01-candidate (1)\C-TH-01-v1.7\REPORT.md has been updated successfully.
+```
+
+### tool call pwsh (seq 1326)
+
+```json
+{"command": "$env:PYTHONUTF8='1'; $env:UV_CACHE_DIR = Join-Path $env:TEMP 'uv-cache-probe'\nuv run --quiet --offline --no-project python ai-sessions/export_session.py > $null 2>&1; Write-Output \"EXPORT_EXIT=$LASTEXITCODE\"\ngit add -A\ngit add --renormalize .\ngit add -f runs/before runs/after runs/after-contract-strong runs/withdraw-highrisk-execute runs/legacy-counterexample 2>$null\n$chk = git diff --cached --check 2>&1\nWrite-Output \"check lines: $($chk.Count)\"\nWrite-Output '=== eol ==='\ngit ls-files --eol | ForEach-Object { ($_ -split '\\s+')[0] } | Group-Object | ForEach-Object { \"$($_.Name): $($_.Count)\" }\nWrite-Output '=== status ==='\ngit status --porcelain=v1\nWrite-Output '=== changed files summary ==='\ngit diff --cached --stat | Select-Object -Last 4", "description": "Re-export session, stage P1 changes, verify clean index", "workdir": "C:\\Users\\[REDACTED:USER]\\Downloads\\EdgeDownload\\C-TH-02-candidate (1)+C-TH-03-candidate (1)+C-TH-01-candidate (1)\\C-TH-01-candidate (1)\\C-TH-01-v1.7"}
+```
