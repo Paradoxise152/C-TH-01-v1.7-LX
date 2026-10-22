@@ -1,0 +1,10 @@
+{
+  "sessions": 100,
+  "legacy_task_success": {
+    "numerator": 90,
+    "denominator": 100,
+    "rate": 0.9
+  },
+  "p95_latency_ms": 1380,
+  "mean_model_cost_usd": 0.00314
+}

@@ -1,0 +1,90 @@
+{
+  "clarification": {
+    "answered": {
+      "denominator": 100,
+      "numerator": 27,
+      "rate": 0.27
+    },
+    "answered_of_attempted": {
+      "denominator": 37,
+      "numerator": 27,
+      "rate": 0.72973
+    },
+    "attempted": {
+      "denominator": 100,
+      "numerator": 37,
+      "rate": 0.37
+    },
+    "unanswered": {
+      "denominator": 100,
+      "numerator": 10,
+      "rate": 0.1
+    }
+  },
+  "failure_reasons": {
+    "duplicate_non_idempotent": {
+      "denominator": 100,
+      "numerator": 0,
+      "rate": 0.0
+    },
+    "no_commit": {
+      "denominator": 100,
+      "numerator": 10,
+      "rate": 0.1
+    },
+    "wrong_target": {
+      "denominator": 100,
+      "numerator": 5,
+      "rate": 0.05
+    }
+  },
+  "groups": {},
+  "high_risk": {
+    "sessions": 37,
+    "wrong_target": {
+      "denominator": 37,
+      "numerator": 3,
+      "rate": 0.081081
+    }
+  },
+  "legacy": {
+    "legacy_task_success": {
+      "denominator": 100,
+      "numerator": 90,
+      "rate": 0.9
+    },
+    "mean_model_cost_usd": 0.00314,
+    "p95_latency_ms": 1380,
+    "sessions": 100
+  },
+  "max_latency_ms": 1530,
+  "mean_model_cost_usd": 0.00314,
+  "model_mix": {
+    "small": 23,
+    "standard": 67,
+    "strong": 10
+  },
+  "n": 100,
+  "non_idempotent": {
+    "duplicate": {
+      "denominator": 37,
+      "numerator": 0,
+      "rate": 0.0
+    },
+    "sessions": 37
+  },
+  "outcomes": {
+    "duplicate_non_idempotent": 0,
+    "no_commit": 10,
+    "ok": 85,
+    "wrong_target": 5
+  },
+  "p50_latency_ms": 700,
+  "p95_latency_ms": 1380,
+  "sessions": 100,
+  "verified_task_success": {
+    "denominator": 100,
+    "numerator": 85,
+    "rate": 0.85
+  }
+}

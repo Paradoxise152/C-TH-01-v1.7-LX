@@ -1,0 +1,13 @@
+# 统一换行处理：仓库内按 LF 存储，检出时按平台换行。
+# 这样 Windows 上 Python 以文本模式重写 runs/*.jsonl（CRLF）不会让工作区变成“已修改”，
+# 重放同一命令仍然得到干净的工作区；同时 git diff --check 不会把 CR 当成行尾空白。
+* text=auto
+
+# 明确声明文本类型，避免 git 把超长行/控制字符的文本误判为二进制（例如导出的 session md）。
+*.md text
+*.json text
+*.jsonl text
+*.py text
+*.ps1 text
+*.cmd text
+*.toml text

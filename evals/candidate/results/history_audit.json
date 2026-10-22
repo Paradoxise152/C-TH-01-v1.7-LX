@@ -1,0 +1,118 @@
+{
+  "can_verify_target": false,
+  "clarification_answered": {
+    "denominator": 100,
+    "numerator": 30,
+    "rate": 0.3
+  },
+  "clarification_unanswered": {
+    "denominator": 100,
+    "numerator": 9,
+    "rate": 0.09
+  },
+  "clarifications": {
+    "denominator": 100,
+    "numerator": 39,
+    "rate": 0.39
+  },
+  "deduplicated": 7,
+  "has_world_field": false,
+  "mean_model_cost_usd": 0.00314,
+  "note": "历史日志只有可观察行为，没有 world；零动作与重复动作可核实，目标对错不可核实。",
+  "p95_latency_ms": 1430,
+  "sessions": 100,
+  "sessions_with_multiple_commits": 0,
+  "signals": {
+    "device_manual_reversal": 5,
+    "user_correction": 1
+  },
+  "tool_timeouts": 11,
+  "zero_action_detail": [
+    {
+      "explicit_target": null,
+      "id": "s-644c37e5f5185ff4",
+      "interaction_mode": "normal",
+      "latency_ms": 700,
+      "model_cost_usd": 0.001,
+      "risk": "high",
+      "text": "发给他"
+    },
+    {
+      "explicit_target": null,
+      "id": "s-d7f5a766522ab521",
+      "interaction_mode": "busy",
+      "latency_ms": 1450,
+      "model_cost_usd": 0.003,
+      "risk": "low",
+      "text": "打开那个"
+    },
+    {
+      "explicit_target": null,
+      "id": "s-7740b06e38698b62",
+      "interaction_mode": "busy",
+      "latency_ms": 1300,
+      "model_cost_usd": 0.001,
+      "risk": "high",
+      "text": "发给他"
+    },
+    {
+      "explicit_target": "hall_light",
+      "id": "s-5117ed294740d791",
+      "interaction_mode": "busy",
+      "latency_ms": 1450,
+      "model_cost_usd": 0.003,
+      "risk": "low",
+      "text": "打开hall_light。"
+    },
+    {
+      "explicit_target": null,
+      "id": "s-4b491e6a483a012f",
+      "interaction_mode": "busy",
+      "latency_ms": 1300,
+      "model_cost_usd": 0.001,
+      "risk": "high",
+      "text": "发送这条测试消息给刚才那个。"
+    },
+    {
+      "explicit_target": null,
+      "id": "s-e411e46b9be77e1e",
+      "interaction_mode": "normal",
+      "latency_ms": 850,
+      "model_cost_usd": 0.003,
+      "risk": "low",
+      "text": "打开那盏灯。"
+    },
+    {
+      "explicit_target": null,
+      "id": "s-8223be8c91fcf4ba",
+      "interaction_mode": "normal",
+      "latency_ms": 700,
+      "model_cost_usd": 0.001,
+      "risk": "high",
+      "text": "发给他"
+    },
+    {
+      "explicit_target": null,
+      "id": "s-06a5039d4272793f",
+      "interaction_mode": "normal",
+      "latency_ms": 850,
+      "model_cost_usd": 0.003,
+      "risk": "low",
+      "text": "打开那盏灯。"
+    },
+    {
+      "explicit_target": null,
+      "id": "s-f405a4b0255cb79f",
+      "interaction_mode": "busy",
+      "latency_ms": 1300,
+      "model_cost_usd": 0.001,
+      "risk": "high",
+      "text": "发给他"
+    }
+  ],
+  "zero_action_sessions": {
+    "denominator": 100,
+    "numerator": 9,
+    "rate": 0.09
+  }
+}

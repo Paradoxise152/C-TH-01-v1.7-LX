@@ -1,0 +1,191 @@
+{
+  "boundary_delta": null,
+  "explicit_low": {
+    "clarified": 0,
+    "mean_model_cost_usd": 0.009,
+    "model_mix": {
+      "strong": 36
+    },
+    "p95_latency_ms": 1280,
+    "sessions": 36,
+    "verified_task_success": {
+      "denominator": 36,
+      "numerator": 36
+    },
+    "wrong_target": 0,
+    "zero_action": 0
+  },
+  "verified": {
+    "clarification": {
+      "answered": {
+        "denominator": 100,
+        "numerator": 29,
+        "rate": 0.29
+      },
+      "answered_of_attempted": {
+        "denominator": 38,
+        "numerator": 29,
+        "rate": 0.763158
+      },
+      "attempted": {
+        "denominator": 100,
+        "numerator": 38,
+        "rate": 0.38
+      },
+      "unanswered": {
+        "denominator": 100,
+        "numerator": 9,
+        "rate": 0.09
+      }
+    },
+    "failure_reasons": {
+      "duplicate_non_idempotent": {
+        "denominator": 100,
+        "numerator": 0,
+        "rate": 0.0
+      },
+      "no_commit": {
+        "denominator": 100,
+        "numerator": 9,
+        "rate": 0.09
+      },
+      "wrong_target": {
+        "denominator": 100,
+        "numerator": 2,
+        "rate": 0.02
+      }
+    },
+    "groups": {},
+    "high_risk": {
+      "sessions": 37,
+      "wrong_target": {
+        "denominator": 37,
+        "numerator": 0,
+        "rate": 0.0
+      }
+    },
+    "legacy": {
+      "legacy_task_success": {
+        "denominator": 100,
+        "numerator": 91,
+        "rate": 0.91
+      },
+      "mean_model_cost_usd": 0.00614,
+      "p95_latency_ms": 1380,
+      "sessions": 100
+    },
+    "max_latency_ms": 1530,
+    "mean_model_cost_usd": 0.00614,
+    "model_mix": {
+      "small": 23,
+      "standard": 17,
+      "strong": 60
+    },
+    "n": 100,
+    "non_idempotent": {
+      "duplicate": {
+        "denominator": 37,
+        "numerator": 0,
+        "rate": 0.0
+      },
+      "sessions": 37
+    },
+    "outcomes": {
+      "duplicate_non_idempotent": 0,
+      "no_commit": 9,
+      "ok": 89,
+      "wrong_target": 2
+    },
+    "p50_latency_ms": 780,
+    "p95_latency_ms": 1380,
+    "sessions": 100,
+    "verified_task_success": {
+      "denominator": 100,
+      "numerator": 89,
+      "rate": 0.89
+    }
+  },
+  "zero_action": [
+    {
+      "clarified": true,
+      "explicit_target": null,
+      "id": "s-c5b3ee68f2d7e767",
+      "interaction_mode": "normal",
+      "latency_ms": 700,
+      "risk": "high",
+      "text": "现在发送这条测试消息给刚才定好的那个。"
+    },
+    {
+      "clarified": true,
+      "explicit_target": null,
+      "id": "s-c16d6bed61f0a58b",
+      "interaction_mode": "busy",
+      "latency_ms": 1300,
+      "risk": "high",
+      "text": "发给他"
+    },
+    {
+      "clarified": true,
+      "explicit_target": null,
+      "id": "s-20636a0dece1f23d",
+      "interaction_mode": "normal",
+      "latency_ms": 700,
+      "risk": "high",
+      "text": "就发送这条测试消息给刚才说的前一个。"
+    },
+    {
+      "clarified": true,
+      "explicit_target": null,
+      "id": "s-76726e5ea71b19d6",
+      "interaction_mode": "busy",
+      "latency_ms": 1300,
+      "risk": "high",
+      "text": "按刚才改好的，发送这条测试消息给它。"
+    },
+    {
+      "clarified": true,
+      "explicit_target": null,
+      "id": "s-14b6958e20879021",
+      "interaction_mode": "normal",
+      "latency_ms": 850,
+      "risk": "low",
+      "text": "打开那盏灯。"
+    },
+    {
+      "clarified": true,
+      "explicit_target": null,
+      "id": "s-c092fc25b32c2219",
+      "interaction_mode": "normal",
+      "latency_ms": 850,
+      "risk": "low",
+      "text": "打开那盏灯。"
+    },
+    {
+      "clarified": true,
+      "explicit_target": null,
+      "id": "s-93536859557e8636",
+      "interaction_mode": "busy",
+      "latency_ms": 1300,
+      "risk": "high",
+      "text": "发给他"
+    },
+    {
+      "clarified": true,
+      "explicit_target": null,
+      "id": "s-30c86deeca20f10e",
+      "interaction_mode": "busy",
+      "latency_ms": 1450,
+      "risk": "low",
+      "text": "打开那个"
+    },
+    {
+      "clarified": true,
+      "explicit_target": null,
+      "id": "s-1c5e7f6de58b4fbb",
+      "interaction_mode": "normal",
+      "latency_ms": 700,
+      "risk": "high",
+      "text": "发给他"
+    }
+  ]
+}

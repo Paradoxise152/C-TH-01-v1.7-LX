@@ -1,0 +1,107 @@
+{
+  "boundary_delta": null,
+  "explicit_low": {
+    "clarified": 0,
+    "mean_model_cost_usd": 0.003,
+    "model_mix": {
+      "standard": 36
+    },
+    "p95_latency_ms": 830,
+    "sessions": 36,
+    "verified_task_success": {
+      "denominator": 36,
+      "numerator": 33
+    },
+    "wrong_target": 3,
+    "zero_action": 0
+  },
+  "verified": {
+    "clarification": {
+      "answered": {
+        "denominator": 100,
+        "numerator": 0,
+        "rate": 0.0
+      },
+      "answered_of_attempted": {
+        "denominator": 0,
+        "numerator": 0,
+        "rate": null
+      },
+      "attempted": {
+        "denominator": 100,
+        "numerator": 0,
+        "rate": 0.0
+      },
+      "unanswered": {
+        "denominator": 100,
+        "numerator": 0,
+        "rate": 0.0
+      }
+    },
+    "failure_reasons": {
+      "duplicate_non_idempotent": {
+        "denominator": 100,
+        "numerator": 0,
+        "rate": 0.0
+      },
+      "no_commit": {
+        "denominator": 100,
+        "numerator": 0,
+        "rate": 0.0
+      },
+      "wrong_target": {
+        "denominator": 100,
+        "numerator": 19,
+        "rate": 0.19
+      }
+    },
+    "groups": {},
+    "high_risk": {
+      "sessions": 37,
+      "wrong_target": {
+        "denominator": 37,
+        "numerator": 9,
+        "rate": 0.243243
+      }
+    },
+    "legacy": {
+      "legacy_task_success": {
+        "denominator": 100,
+        "numerator": 100,
+        "rate": 1.0
+      },
+      "mean_model_cost_usd": 0.003,
+      "p95_latency_ms": 830,
+      "sessions": 100
+    },
+    "max_latency_ms": 830,
+    "mean_model_cost_usd": 0.003,
+    "model_mix": {
+      "standard": 100
+    },
+    "n": 100,
+    "non_idempotent": {
+      "duplicate": {
+        "denominator": 37,
+        "numerator": 0,
+        "rate": 0.0
+      },
+      "sessions": 37
+    },
+    "outcomes": {
+      "duplicate_non_idempotent": 0,
+      "no_commit": 0,
+      "ok": 81,
+      "wrong_target": 19
+    },
+    "p50_latency_ms": 330,
+    "p95_latency_ms": 830,
+    "sessions": 100,
+    "verified_task_success": {
+      "denominator": 100,
+      "numerator": 81,
+      "rate": 0.81
+    }
+  },
+  "zero_action": []
+}
